@@ -1,0 +1,815 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}[hidden]{display:none!important}</style>
+<title>Word Building Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Lexend:wght@400;500;600&display=swap">
+<style>
+/* Layout: a tile tray across the top, a gridded board filling the middle, a tool bar along the bottom. One classroom look in both themes. */
+:root {
+  --board-yellow: #F2CE66;
+  --board-green: #3E6B47;
+  --grid: rgba(255, 255, 255, .38);
+  --forest: #2F5A36;
+  --forest-dark: #22432A;
+  --butter: #F6D774;
+  --tray: #FBF8EF;
+  --tray-well: #EEE9DA;
+  --ink: #23241F;
+  --muted: #6B6A5E;
+  --tile: #FFFFFF;
+  --tile-edge: #2A2B26;
+  --vowel: #C2352B;
+  --prefix: #A87A0C;
+  --root: #2F6B35;
+  --suffix: #B8322A;
+  --suffix2: #7E2522;
+  --focus: #1D5FD1;
+  --font-tile: "Andika", "Century Gothic", "Trebuchet MS", sans-serif;
+  --font-ui: "Lexend", "Segoe UI", system-ui, sans-serif;
+  color-scheme: light;
+}
+html, body { height: 100%; overscroll-behavior: none; }
+body { background: var(--tray); color: var(--ink); font-family: var(--font-ui); overflow: hidden; }
+* { box-sizing: border-box; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+.app { height: 100%; display: grid; grid-template-rows: auto 1fr auto; grid-template-columns: minmax(0, 1fr); }
+
+/* ---------- Tray ---------- */
+.tray { background: var(--tray); border-bottom: 2px solid var(--tray-well); position: relative; z-index: 5; transition: background .15s; }
+.tray.remove-zone { background: #FBE3DF; }
+.tray.remove-zone::after { content: "Let go to remove the tile"; position: absolute; right: 16px; bottom: 8px; padding: 4px 10px; border-radius: 8px; background: var(--suffix); color: #fff; font-size: 13px; font-weight: 600; }
+.tabs { display: flex; gap: 6px; overflow-x: auto; padding: 10px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); scrollbar-width: thin; }
+.tab { flex: 0 0 auto; border: 0; border-radius: 10px; padding: 9px 16px; background: var(--tray-well); color: var(--ink); font-size: 14px; font-weight: 500; cursor: pointer; box-shadow: inset 0 -3px 0 rgba(0,0,0,.08); }
+.tab[aria-selected="true"] { background: var(--forest); color: var(--butter); box-shadow: inset 0 -3px 0 var(--forest-dark); }
+/* Fixed height, so the board never changes size when switching tabs. */
+.panel { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; align-content: flex-start; padding: 2px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)); height: clamp(130px, 30vh, 250px); overflow-y: auto; }
+.group { background: var(--tray-well); border-radius: 12px; padding: 8px 10px 10px; display: flex; flex-direction: column; gap: 6px; min-width: 0; max-width: 100%; }
+.group h3 { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.group .row { display: flex; flex-wrap: wrap; gap: 5px; }
+.group.letters .row { display: grid; grid-template-columns: repeat(13, auto); }
+.g-prefix { background: #F8E7A9; } .g-root { background: #CFE2C6; } .g-suffix { background: #F3CBC4; } .g-suffix2 { background: #E8C0BC; }
+.toggle { border: 0; border-radius: 10px; padding: 10px 14px; background: var(--forest); color: var(--butter); font-size: 13px; font-weight: 500; cursor: pointer; box-shadow: inset 0 -3px 0 var(--forest-dark); }
+.toggle[aria-pressed="true"] { background: var(--butter); color: var(--forest-dark); box-shadow: inset 0 -3px 0 #D9B84E; }
+.note { background: var(--tile); border: 2px solid var(--tray-well); border-radius: 12px; padding: 10px 14px; font-size: 13px; max-width: 34ch; }
+.note strong { color: var(--forest); }
+.note ol { margin: 4px 0 0; padding-left: 18px; }
+
+/* tray tiles */
+.ttile { min-width: 36px; height: 36px; padding: 0 7px; border: 2px solid var(--tile-edge); border-radius: 7px; background: var(--tile); font-family: var(--font-tile); font-size: 17px; line-height: 1; cursor: grab; touch-action: none; box-shadow: inset 0 -3px 0 rgba(0,0,0,.09); display: inline-flex; align-items: center; justify-content: center; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.ttile:hover { transform: translateY(-1px); }
+.ttile * { pointer-events: none; }
+.ttile.k-vowel { color: var(--vowel); border-color: var(--vowel); }
+.ttile.k-prefix { color: var(--prefix); border-color: var(--prefix); }
+.ttile.k-root { color: var(--root); border-color: var(--root); }
+.ttile.k-suffix { color: var(--suffix); border-color: var(--suffix); }
+.ttile.k-suffix2 { color: var(--suffix2); border-color: var(--suffix2); }
+.ttile.k-label { border-radius: 999px; font-family: var(--font-ui); font-size: 13px; font-weight: 600; padding: 0 12px; }
+.ttile.k-color { width: 36px; border-color: rgba(0,0,0,.55); }
+.ttile.k-heart { border: 0; background: transparent; box-shadow: none; width: 40px; }
+
+/* ---------- Board ---------- */
+.board { position: relative; z-index: 1; overflow: hidden; background-color: var(--board-yellow); background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px); background-size: 48px 48px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.board.green { background-color: var(--board-green); --grid: rgba(255,255,255,.12); }
+/* While a tile is carried, it can travel over the tray (to remove it) without being clipped. */
+.board.carrying { overflow: visible; z-index: 10; }
+.layer { position: absolute; inset: 0; }
+#ink { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 9000; pointer-events: none; touch-action: none; }
+.board.drawing #ink { pointer-events: auto; cursor: crosshair; }
+.board.erasing #ink { pointer-events: auto; cursor: cell; }
+.board.carrying #ink { pointer-events: none; }
+.hint { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); width: min(560px, calc(100% - 32px)); margin: 0; text-align: center; font-size: 14px; color: rgba(35,36,31,.62); pointer-events: none; text-wrap: balance; }
+.board.green .hint { color: rgba(255,255,255,.7); }
+.modebar { position: absolute; z-index: 9500; top: 10px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 7px 8px 7px 14px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,.2); white-space: nowrap; max-width: calc(100% - 24px); }
+.modebar button { border: 0; border-radius: 999px; padding: 6px 12px; background: var(--butter); color: var(--forest-dark); font-weight: 600; cursor: pointer; }
+
+/* board tiles */
+.tile { --u: 70px; position: absolute; height: var(--u); min-width: var(--u); padding: 0 calc(var(--u) * .2); display: flex; align-items: center; justify-content: center; background: var(--tile); color: var(--ink); border: 3px solid var(--tile-edge); border-radius: calc(var(--u) * .16); font-family: var(--font-tile); font-size: calc(var(--u) * .58); line-height: 1; white-space: nowrap; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-user-drag: none; box-shadow: inset 0 calc(var(--u) * -.08) 0 rgba(0,0,0,.08), 0 3px 0 rgba(0,0,0,.12); transform-origin: center; transition: box-shadow .12s, scale .12s; }
+.tile * { pointer-events: none; }
+.tile.long { font-size: calc(var(--u) * .46); }
+.tile.carried { cursor: grabbing; scale: 1.06; box-shadow: inset 0 calc(var(--u) * -.08) 0 rgba(0,0,0,.08), 0 12px 22px rgba(0,0,0,.25); transition: none; }
+.tile.selected { outline: 3px dashed var(--focus); outline-offset: 4px; }
+.tile.k-vowel { color: var(--vowel); border-color: var(--vowel); }
+.tile.k-prefix { color: var(--prefix); border-color: var(--prefix); }
+.tile.k-root { color: var(--root); border-color: var(--root); }
+.tile.k-suffix { color: var(--suffix); border-color: var(--suffix); }
+.tile.k-suffix2 { color: var(--suffix2); border-color: var(--suffix2); }
+.tile.k-label { height: calc(var(--u) * .62); border-radius: 999px; font-family: var(--font-ui); font-weight: 600; font-size: calc(var(--u) * .28); padding: 0 calc(var(--u) * .3); }
+.tile.k-color { border-color: rgba(0,0,0,.5); }
+.tile.k-heart { background: transparent; border: 0; box-shadow: none; padding: 0; }
+.tile.k-heart svg { width: 100%; height: 100%; filter: drop-shadow(0 3px 0 rgba(0,0,0,.15)); }
+.ghost { position: fixed; z-index: 10000; pointer-events: none; scale: 1.06; }
+
+/* ---------- Toolbar ---------- */
+.toolbar { background: var(--tray); border-top: 2px solid var(--tray-well); display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: flex-start; padding-block: 8px 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); position: relative; z-index: 5; }
+.tgroup { display: flex; gap: 6px; }
+.tool { display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: 0; padding: 0; cursor: pointer; font-size: 11px; color: var(--muted); min-width: 46px; }
+.tool .face { width: 44px; height: 44px; border-radius: 11px; background: var(--forest); color: var(--butter); display: grid; place-items: center; box-shadow: inset 0 -4px 0 var(--forest-dark); }
+.tool svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.tool[aria-pressed="true"] .face { background: var(--butter); color: var(--forest-dark); box-shadow: inset 0 -4px 0 #D3B14A, 0 0 0 2px var(--forest); }
+.tool[aria-pressed="true"] { color: var(--ink); font-weight: 600; }
+.tool:disabled { cursor: default; opacity: .4; }
+.tool.armed .face { background: var(--suffix); color: #fff; box-shadow: inset 0 -4px 0 var(--suffix2); }
+.tool.armed { color: var(--suffix); font-weight: 600; }
+.inkdot { width: 24px; height: 24px; border-radius: 50%; border: 3px solid rgba(255,255,255,.9); }
+.tool.size .face { font-family: var(--font-tile); font-size: 20px; font-weight: 700; }
+.tool.bg .face { border: 3px solid rgba(255,255,255,.9); }
+.tool.bg .face svg { opacity: 0; }
+.tool.bg[aria-pressed="true"] .face svg { opacity: 1; }
+
+@media (max-width: 640px) {
+  .group.letters .row { grid-template-columns: repeat(9, auto); }
+  .toolbar { gap: 6px 10px; }
+  .tool { min-width: 40px; font-size: 10px; }
+  .tool .face { width: 38px; height: 38px; }
+  .hint { display: none; }
+  .modebar { font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app" id="app">
+  <header class="tray" id="tray">
+    <div class="tabs" role="tablist" id="tabs" aria-label="Tile sets"></div>
+    <div class="panel" role="tabpanel" id="panel"></div>
+  </header>
+
+  <main class="board" id="board" aria-label="Word building board">
+    <div class="layer" id="tiles"></div>
+    <canvas id="ink"></canvas>
+    <p class="hint" id="hint">Tap a tile to add it to the board, or drag it where you want it. Drag a tile back up to the tray to remove it. You can also type letters on your keyboard.</p>
+    <div class="modebar" id="modebar" hidden><span id="modeText">The pen is on.</span><button type="button" id="modeBack">Move tiles</button></div>
+  </main>
+
+  <footer class="toolbar">
+    <div class="tgroup" role="group" aria-label="Mode">
+      <button class="tool" id="tMove" aria-pressed="true"><span class="face"><svg viewBox="0 0 24 24"><path d="M5 3l14 7.5-6.2 1.7L10 18.5z"/></svg></span>Move</button>
+      <button class="tool" id="tPen" aria-pressed="false"><span class="face"><svg viewBox="0 0 24 24"><path d="M4 20l1-4.5L16 4.5l3.5 3.5L8.5 19z"/><path d="M14 7l3 3"/></svg></span>Draw</button>
+      <button class="tool" id="tEraser" aria-pressed="false"><span class="face"><svg viewBox="0 0 24 24"><path d="M9 20h11"/><path d="M4.5 15.5l9-9 6 6-7.5 7.5H8.5z"/><path d="M9.5 10.5l6 6"/></svg></span>Erase</button>
+    </div>
+    <div class="tgroup" role="group" aria-label="Pen color">
+      <button class="tool" id="inkBlack" aria-pressed="true"><span class="face"><span class="inkdot" style="background:#1F1F1F"></span></span>Black pen</button>
+      <button class="tool" id="inkRed" aria-pressed="false"><span class="face"><span class="inkdot" style="background:#D3302A"></span></span>Red pen</button>
+    </div>
+    <div class="tgroup" role="group" aria-label="Selected tile">
+      <button class="tool" id="tRotate" disabled><span class="face"><svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg></span>Rotate</button>
+      <button class="tool" id="tCopy" disabled><span class="face"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg></span>Copy</button>
+      <button class="tool" id="tRemove" disabled><span class="face"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></span>Remove</button>
+    </div>
+    <div class="tgroup" role="group" aria-label="History">
+      <button class="tool" id="tUndo" disabled><span class="face"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></span>Undo</button>
+      <button class="tool" id="tRedo" disabled><span class="face"><svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></span>Redo</button>
+    </div>
+    <div class="tgroup" role="group" aria-label="Clear">
+      <button class="tool" id="tWipe"><span class="face"><svg viewBox="0 0 24 24"><path d="M4 20l1-4.5L16 4.5l3.5 3.5L8.5 19z"/><path d="M3 3l18 18"/></svg></span>Wipe ink</button>
+      <button class="tool" id="tClear"><span class="face"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></span><span id="clearLabel">Clear all</span></button>
+    </div>
+    <div class="tgroup" role="group" aria-label="Tile size">
+      <button class="tool size" id="tSmaller" aria-label="Smaller tiles"><span class="face" aria-hidden="true">a</span>Smaller</button>
+      <button class="tool size" id="tBigger" aria-label="Bigger tiles"><span class="face" aria-hidden="true" style="font-size:28px">a</span>Bigger</button>
+    </div>
+    <div class="tgroup" role="group" aria-label="Board color">
+      <button class="tool bg" id="bgYellow" aria-pressed="true"><span class="face" style="background:var(--board-yellow)"><svg viewBox="0 0 24 24" style="stroke:#23241F"><path d="M5 12l5 5 9-10"/></svg></span>Yellow</button>
+      <button class="tool bg" id="bgGreen" aria-pressed="false"><span class="face" style="background:var(--board-green)"><svg viewBox="0 0 24 24" style="stroke:#fff"><path d="M5 12l5 5 9-10"/></svg></span>Green</button>
+    </div>
+  </footer>
+</div>
+
+<script>
+(() => {
+  // ---------- Tile sets ----------
+  const COLORS = [
+    ["green", "#3FAE49"], ["yellow", "#F5E03B"], ["red", "#E23B32"], ["orange", "#F39B2B"],
+    ["blue", "#1F40BE"], ["purple", "#7B2CBF"], ["pink", "#F07ACB"]
+  ];
+  const vowelOr = (t) => /^[aeiou]$/i.test(t) ? "vowel" : "cons";
+  const GROUPS = {
+    letters:  { title: "Letters", cls: "letters", kind: vowelOr, tiles: "a b c d e f g h i j k l m n o p qu r s t u v w x y z" },
+    digraphs: { title: "Digraphs & endings", kind: "cons", tiles: "sh th ch wh ph tch dge ff ll ss zz ck" },
+    markers:  { title: "Markers", special: "markers" },
+    blendsI:  { title: "Initial blends", kind: "cons", tiles: "bl cl fl gl pl sl spl br cr dr fr gr pr tr scr sk sn sm sp sw tw str" },
+    blendsF:  { title: "Final blends", kind: "cons", tiles: "nd nt mp ft st ct" },
+    glued:    { title: "Glued sounds", kind: "cons", tiles: "ing ang ong ung ink ank onk unk" },
+    vteams:   { title: "Vowel teams", kind: "cons", tiles: "ee ea ai ay oa ow oe oo ie igh ou oi oy au aw ue eu" },
+    rctrl:    { title: "R-controlled", kind: "cons", tiles: "ar or er ir ur air ear oar ore our oor" },
+    prefix:   { title: "Prefixes", cls: "g-prefix", kind: "prefix", tiles: "re de pre pro un in mis dis con sub non mid trans inter anti" },
+    root:     { title: "Roots", cls: "g-root", kind: "root", tiles: "ject tract rupt struct sist gress sect port form tort cur fer mote spect vis vid" },
+    suffix:   { title: "Suffixes", cls: "g-suffix", kind: "suffix", tiles: "s es ing ed er est ful less able ible ish ive ly en ness ment al" },
+    suffix2:  { title: "Advanced suffixes", cls: "g-suffix2", kind: "suffix2", tiles: "(t)ion (s)ion (c)ian (t)ious (c)ious (x)ious (t)ient (c)ient (t)iate (c)iate ture" },
+    caps:     { title: "Capital letters", cls: "letters", kind: vowelOr, tiles: "A B C D E F G H I J K L M N O P QU R S T U V W X Y Z" },
+    labels:   { title: "Syllable types", kind: "label", tiles: "closed|open|magic e|vowel teams|r-controlled|consonant le", sep: "|" }
+  };
+  const TABS = [
+    { id: "basic",  name: "Basic Tiles", groups: ["letters", "digraphs", "markers"], extra: ["blendsI", "blendsF"], extraLabel: "Initial and Final Blends" },
+    { id: "glued",  name: "Glued Sounds", groups: ["letters", "glued", "digraphs", "markers"], extra: ["blendsI", "blendsF"], extraLabel: "Initial and Final Blends" },
+    { id: "vowels", name: "Advanced Vowels", groups: ["vteams", "rctrl"] },
+    { id: "morph",  name: "Prefixes, Roots & Suffixes", groups: ["prefix", "root", "suffix", "suffix2"] },
+    { id: "caps",   name: "Capital Letters", groups: ["caps"] },
+    { id: "labels", name: "Syllable Labels", groups: ["labels"], note: true }
+  ];
+  const HEART = '<svg viewBox="0 0 64 58" aria-hidden="true"><path d="M32 56S4 39 4 19A14.5 14.5 0 0 1 32 12a14.5 14.5 0 0 1 28 7c0 20-28 37-28 37z" fill="#E0362C" stroke="#9E1F18" stroke-width="3" stroke-linejoin="round"/><path d="M14 18a7 7 0 0 1 7-6" stroke="#fff" stroke-width="3.5" stroke-linecap="round" fill="none" opacity=".7"/></svg>';
+  const UNITS = [48, 60, 74, 92];
+  const STORE = "word-building-board-v1";
+  const HOLD_MS = 450;     // press-and-hold on a tile picks it up even while the pen is on
+  const TRAY_START = 6;    // px a tray tile must travel before it becomes a drag
+  const BOARD_START = 3;   // px a board tile must travel before it moves
+
+  // ---------- Elements ----------
+  const $ = (id) => document.getElementById(id);
+  const tray = $("tray"), tabsEl = $("tabs"), panel = $("panel"), board = $("board"), tilesLayer = $("tiles"), canvas = $("ink"), hint = $("hint");
+  const ctx = canvas.getContext("2d");
+
+  // ---------- State ----------
+  let state = { tiles: [], strokes: [] };
+  let prefs = { tab: "basic", extra: false, size: 2, bg: "yellow" };
+  let tool = "move", inkColor = "#1F1F1F", selId = null, nextId = 1;
+  let cursor = null; // where the next tapped tile lands
+  const undoStack = [], redoStack = [];
+
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORE) || "null");
+    if (saved && saved.state && Array.isArray(saved.state.tiles)) { state = saved.state; Object.assign(prefs, saved.prefs || {}); }
+  } catch (e) {}
+  if (!Array.isArray(state.strokes)) state.strokes = [];
+  nextId = state.tiles.reduce((m, t) => Math.max(m, t.id), 0) + 1;
+  let lastSnap = JSON.stringify(state);
+  const firstVisit = !state.tiles.length && !state.strokes.length;
+
+  const unit = () => UNITS[prefs.size];
+  const save = () => { try { localStorage.setItem(STORE, JSON.stringify({ state, prefs })); } catch (e) {} };
+
+  function commit() {
+    const snap = JSON.stringify(state);
+    if (snap === lastSnap) return;
+    undoStack.push(lastSnap);
+    if (undoStack.length > 150) undoStack.shift();
+    redoStack.length = 0;
+    lastSnap = snap;
+    save(); syncButtons();
+  }
+  function restore(snap) {
+    lastSnap = snap; state = JSON.parse(snap); selId = null; cursor = null;
+    renderTiles(); clampAll(); redrawInk(); save(); syncButtons();
+  }
+  function undo() { if (!busy() && undoStack.length) { redoStack.push(lastSnap); restore(undoStack.pop()); } }
+  function redo() { if (!busy() && redoStack.length) { undoStack.push(lastSnap); restore(redoStack.pop()); } }
+
+  // ---------- Tray ----------
+  function groupTiles(key) {
+    const g = GROUPS[key];
+    if (g.special === "markers") {
+      return [{ text: "", kind: "heart", name: "heart" }].concat(COLORS.map(([name, hex]) => ({ text: "", kind: "color", color: hex, name: name + " marker" })));
+    }
+    return g.tiles.split(g.sep || " ").map((t) => ({ text: t, kind: typeof g.kind === "function" ? g.kind(t) : g.kind }));
+  }
+  function trayTile(spec) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "ttile k-" + spec.kind;
+    b.dataset.spec = JSON.stringify(spec);
+    if (spec.kind === "heart") b.innerHTML = HEART;
+    else if (spec.kind === "color") b.style.background = spec.color;
+    else b.textContent = spec.text;
+    b.setAttribute("aria-label", "Add " + (spec.name || spec.text));
+    return b;
+  }
+  function renderGroup(key) {
+    const g = GROUPS[key];
+    const wrap = document.createElement("section");
+    wrap.className = "group " + (g.cls || "");
+    wrap.innerHTML = "<h3>" + g.title + "</h3>";
+    const row = document.createElement("div");
+    row.className = "row";
+    groupTiles(key).forEach((s) => row.appendChild(trayTile(s)));
+    wrap.appendChild(row);
+    return wrap;
+  }
+  function renderTray() {
+    tabsEl.innerHTML = "";
+    TABS.forEach((t) => {
+      const b = document.createElement("button");
+      b.className = "tab"; b.type = "button"; b.setAttribute("role", "tab");
+      b.textContent = t.name;
+      b.setAttribute("aria-selected", String(t.id === prefs.tab));
+      b.addEventListener("click", () => { prefs.tab = t.id; save(); renderTray(); });
+      tabsEl.appendChild(b);
+    });
+    const tab = TABS.find((t) => t.id === prefs.tab) || TABS[0];
+    panel.innerHTML = "";
+    panel.scrollTop = 0;
+    tab.groups.forEach((k) => panel.appendChild(renderGroup(k)));
+    if (tab.extra) {
+      const tg = document.createElement("button");
+      tg.type = "button"; tg.className = "toggle";
+      tg.textContent = (prefs.extra ? "Hide " : "Show ") + tab.extraLabel;
+      tg.setAttribute("aria-pressed", String(prefs.extra));
+      tg.addEventListener("click", () => { prefs.extra = !prefs.extra; save(); renderTray(); });
+      panel.appendChild(tg);
+      if (prefs.extra) tab.extra.forEach((k) => panel.appendChild(renderGroup(k)));
+    }
+    if (tab.note) {
+      const n = document.createElement("div");
+      n.className = "note";
+      n.innerHTML = "<strong>Instructions</strong><ol><li>Write or build a word.</li><li>Code the word.</li><li>Select the syllable type for each part of the word.</li></ol>";
+      panel.appendChild(n);
+    }
+  }
+
+  // ---------- Board tiles ----------
+  const tileById = (id) => state.tiles.find((t) => t.id === id);
+  const elById = (id) => tilesLayer.querySelector('.tile[data-id="' + id + '"]');
+  const sigOf = (t) => t.kind + "|" + t.text + "|" + (t.color || "");
+
+  function fillTileEl(el, t) {
+    el.className = "tile k-" + t.kind + (t.text.length > 2 && t.kind !== "label" ? " long" : "");
+    el.style.setProperty("--u", unit() + "px");
+    el.innerHTML = "";
+    el.style.background = "";
+    if (t.kind === "heart") el.innerHTML = HEART;
+    else if (t.kind === "color") el.style.background = t.color;
+    else el.textContent = t.text;
+  }
+  function placeEl(el, t) {
+    el.style.left = t.x + "px";
+    el.style.top = t.y + "px";
+    el.style.transform = t.rot ? "rotate(" + t.rot + "deg)" : "";
+  }
+  // Updates the board in place: elements are created or removed but never re-parented,
+  // so a tile that is being carried keeps its pointer and cannot be dropped by a redraw.
+  function renderTiles() {
+    const live = new Set();
+    state.tiles.forEach((t, i) => {
+      live.add(String(t.id));
+      let el = elById(t.id);
+      if (!el) {
+        el = document.createElement("div");
+        el.dataset.id = t.id;
+        el.tabIndex = 0;
+        el.setAttribute("role", "button");
+        tilesLayer.appendChild(el);
+      }
+      if (el.dataset.sig !== sigOf(t) || el.dataset.u !== String(unit())) {
+        const keep = el.classList.contains("carried");
+        fillTileEl(el, t);
+        el.dataset.sig = sigOf(t); el.dataset.u = String(unit());
+        if (keep) el.classList.add("carried");
+      }
+      el.setAttribute("aria-label", (t.name || t.text) + " tile");
+      el.classList.toggle("selected", t.id === selId);
+      if (!el.classList.contains("carried")) { el.style.zIndex = String(i + 1); placeEl(el, t); }
+    });
+    [...tilesLayer.children].forEach((el) => { if (!live.has(el.dataset.id) && !el.classList.contains("carried")) el.remove(); });
+    hint.hidden = state.tiles.length > 0;
+  }
+
+  function select(id) {
+    selId = id;
+    tilesLayer.querySelectorAll(".tile").forEach((el) => el.classList.toggle("selected", +el.dataset.id === id));
+    syncButtons();
+  }
+  function bringToFront(t) {
+    state.tiles = state.tiles.filter((x) => x !== t).concat(t);
+    state.tiles.forEach((x, i) => { const el = elById(x.id); if (el && !el.classList.contains("carried")) el.style.zIndex = String(i + 1); });
+  }
+  // Visual box of a tile on the board, accounting for a quarter-turn rotation.
+  function boxOf(t, el) {
+    el = el || elById(t.id);
+    const w = el ? el.offsetWidth : unit(), h = el ? el.offsetHeight : unit();
+    const side = t.rot === 90 || t.rot === 270;
+    const vw = side ? h : w, vh = side ? w : h;
+    const cx = t.x + w / 2, cy = t.y + h / 2;
+    return { x: cx - vw / 2, y: cy - vh / 2, w: vw, h: vh, lw: w, lh: h };
+  }
+  function clampTo(t, el) {
+    const W = board.clientWidth, H = board.clientHeight;
+    const b = boxOf(t, el);
+    const nx = Math.max(0, Math.min(W - b.w, b.x)), ny = Math.max(0, Math.min(H - b.h, b.y));
+    t.x = Math.round(t.x + (nx - b.x));
+    t.y = Math.round(t.y + (ny - b.y));
+  }
+  // Keeps every tile fully on the board, e.g. after the window gets smaller.
+  function clampAll() {
+    if (board.clientWidth < 120 || board.clientHeight < 120) return;
+    let changed = false;
+    state.tiles.forEach((t) => {
+      const el = elById(t.id);
+      if (!el || el.classList.contains("carried")) return;
+      const ox = t.x, oy = t.y;
+      clampTo(t, el);
+      if (t.x !== ox || t.y !== oy) { placeEl(el, t); changed = true; }
+    });
+    if (changed) { lastSnap = JSON.stringify(state); save(); }
+  }
+  function hits(x, y, w, h, exceptId) {
+    return state.tiles.some((o) => {
+      if (o.id === exceptId) return false;
+      const b = boxOf(o);
+      return x < b.x + b.w - 3 && x + w > b.x + 3 && y < b.y + b.h - 3 && y + h > b.y + 3;
+    });
+  }
+  // Pull a dropped tile flush against a neighbour so letters join into a word.
+  function snap(t, el) {
+    if (t.rot) return;
+    const w = el.offsetWidth, h = el.offsetHeight, gap = 3, reach = Math.max(20, unit() * .4);
+    const W = board.clientWidth, H = board.clientHeight;
+    let best = null;
+    state.tiles.forEach((o) => {
+      if (o.id === t.id || o.rot) return;
+      const oe = elById(o.id); if (!oe) return;
+      const ow = oe.offsetWidth, oh = oe.offsetHeight;
+      if (Math.abs((t.y + h / 2) - (o.y + oh / 2)) > Math.max(h, oh) * .6) return;
+      const y = Math.round(o.y + (oh - h) / 2);
+      [o.x + ow + gap, o.x - w - gap].forEach((x) => {
+        const d = Math.abs(t.x - x);
+        if (d >= reach || (best && d >= best.d)) return;
+        if (x < 0 || x + w > W || y < 0 || y + h > H) return;
+        if (hits(x, y, w, h, t.id)) return;
+        best = { x, y, d };
+      });
+    });
+    if (best) { t.x = Math.round(best.x); t.y = best.y; }
+  }
+  function setCursorAfter(t) {
+    const el = elById(t.id);
+    if (el) cursor = { x: t.x + el.offsetWidth + 3, y: t.y };
+  }
+  // Where a tapped tile goes: right after the last tile, else the first open space.
+  function freeSpot(w, h) {
+    const W = board.clientWidth, H = board.clientHeight, pad = 24;
+    const fits = (x, y) => x >= 0 && y >= 0 && x + w <= W && y + h <= H && !hits(x, y, w, h, null);
+    if (cursor) {
+      let { x, y } = cursor;
+      if (x + w > W - pad) { x = pad; y += h + 20; }
+      if (fits(x, y)) return { x, y };
+    }
+    const stepY = Math.max(12, Math.round(h / 2));
+    for (let y = pad; y + h <= H; y += stepY)
+      for (let x = pad; x + w <= W; x += 12)
+        if (fits(x, y)) return { x, y };
+    return { x: pad, y: pad };
+  }
+  function addTile(spec, x, y) {
+    if (tool !== "move") setTool("move");
+    const t = { id: nextId++, text: spec.text, kind: spec.kind, x: -9999, y: -9999, rot: 0 };
+    if (spec.color) t.color = spec.color;
+    if (spec.name) t.name = spec.name;
+    state.tiles.push(t);
+    renderTiles();
+    const el = elById(t.id);
+    if (x == null) {
+      const p = freeSpot(el.offsetWidth, el.offsetHeight);
+      t.x = p.x; t.y = p.y;
+    } else {
+      t.x = x - el.offsetWidth / 2; t.y = y - el.offsetHeight / 2;
+      clampTo(t, el); snap(t, el);
+    }
+    placeEl(el, t);
+    setCursorAfter(t);
+    select(t.id);
+    commit();
+  }
+  function removeTile(id) {
+    state.tiles = state.tiles.filter((t) => t.id !== id);
+    if (selId === id) selId = null;
+    renderTiles(); commit(); syncButtons();
+  }
+
+  // ---------- Pointer engine ----------
+  // Every press is tracked by its pointer id in one place. Move/up/cancel are heard on the
+  // whole window, so a drag always ends cleanly: on release, on cancel, when the mouse
+  // button is found already up, or when the page loses focus. Several fingers can drag at once.
+  const active = new Map();
+  const busy = () => active.size > 0;
+  const boardRect = () => board.getBoundingClientRect();
+  const overTray = (cy) => cy < boardRect().top;
+  function capture(el, pid) { try { el.setPointerCapture(pid); } catch (e) {} }
+
+  function updateCarryState() {
+    const carrying = [...active.values()].some((d) => d.kind === "tile" && d.moved);
+    board.classList.toggle("carrying", carrying);
+    if (!carrying) tray.classList.remove("remove-zone");
+  }
+
+  // Tray tile: tap to add, drag to place.
+  panel.addEventListener("pointerdown", (e) => {
+    const b = e.target.closest(".ttile");
+    if (!b || e.button > 0 || active.has(e.pointerId)) return;
+    e.preventDefault();
+    capture(b, e.pointerId);
+    active.set(e.pointerId, { kind: "spawn", spec: JSON.parse(b.dataset.spec), sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, ghost: null, moved: false });
+  });
+  panel.addEventListener("click", (e) => {
+    // Keyboard activation (Enter / Space) of a tray tile
+    const b = e.target.closest(".ttile");
+    if (b && e.detail === 0) addTile(JSON.parse(b.dataset.spec));
+  });
+
+  // Board tile: press and drag (move mode).
+  tilesLayer.addEventListener("pointerdown", (e) => {
+    const el = e.target.closest(".tile");
+    if (!el || e.button > 0 || active.has(e.pointerId)) return;
+    e.preventDefault();
+    startTileDrag(el, e.pointerId, e.clientX, e.clientY, false);
+  });
+  function startTileDrag(el, pid, cx, cy, alreadyMoving) {
+    const t = tileById(+el.dataset.id);
+    if (!t) return;
+    // Only one pointer per tile.
+    for (const d of active.values()) if (d.kind === "tile" && d.id === t.id) return;
+    select(t.id);
+    bringToFront(t);
+    capture(el, pid);
+    const r = boardRect();
+    const d = { kind: "tile", id: t.id, el, ox: cx - r.left - t.x, oy: cy - r.top - t.y, sx: cx, sy: cy, lx: cx, ly: cy, moved: false };
+    active.set(pid, d);
+    if (alreadyMoving) beginCarry(d);
+    try { el.focus({ preventScroll: true }); } catch (e) {}
+  }
+  function beginCarry(d) {
+    d.moved = true;
+    d.el.classList.add("carried");
+    d.el.style.zIndex = "9800";
+    updateCarryState();
+  }
+
+  // Pen / eraser on the canvas. Press-and-hold on a tile picks it up instead.
+  canvas.addEventListener("pointerdown", (e) => {
+    if (tool === "move" || e.button > 0 || active.has(e.pointerId)) return;
+    e.preventDefault();
+    capture(canvas, e.pointerId);
+    const r = boardRect();
+    const s = { c: inkColor, w: tool === "eraser" ? 28 : 5, e: tool === "eraser", p: [[e.clientX - r.left, e.clientY - r.top]] };
+    const d = { kind: "ink", stroke: s, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, moved: false, hold: null };
+    const under = tileAt(e.clientX, e.clientY);
+    if (under) {
+      d.hold = setTimeout(() => {
+        if (active.get(e.pointerId) !== d || d.moved) return;
+        active.delete(e.pointerId);
+        redrawInk();
+        startTileDrag(under, e.pointerId, d.lx, d.ly, true);
+      }, HOLD_MS);
+    }
+    active.set(e.pointerId, d);
+    paint(s, 0);
+  });
+  function tileAt(cx, cy) {
+    const els = document.elementsFromPoint ? document.elementsFromPoint(cx, cy) : [];
+    for (const el of els) { const tile = el.closest && el.closest("#tiles .tile"); if (tile) return tile; }
+    return null;
+  }
+
+  function onMove(e) {
+    const d = active.get(e.pointerId);
+    if (!d) return;
+    // A missed mouse release: the button is already up, so finish here.
+    if (e.pointerType === "mouse" && e.buttons === 0) { finish(e.pointerId, e.clientX, e.clientY, false); return; }
+    d.lx = e.clientX; d.ly = e.clientY;
+    const dist = Math.hypot(e.clientX - d.sx, e.clientY - d.sy);
+
+    if (d.kind === "spawn") {
+      if (!d.ghost && dist > TRAY_START) {
+        d.moved = true;
+        d.ghost = document.createElement("div");
+        fillTileEl(d.ghost, { text: d.spec.text, kind: d.spec.kind, color: d.spec.color });
+        d.ghost.classList.add("ghost", "carried");
+        document.body.appendChild(d.ghost);
+      }
+      if (d.ghost) {
+        d.ghost.style.left = e.clientX - d.ghost.offsetWidth / 2 + "px";
+        d.ghost.style.top = e.clientY - d.ghost.offsetHeight / 2 + "px";
+      }
+    } else if (d.kind === "tile") {
+      if (!d.moved) { if (dist < BOARD_START) return; beginCarry(d); }
+      const t = tileById(d.id);
+      if (!t) return;
+      const r = boardRect();
+      t.x = Math.round(e.clientX - r.left - d.ox);
+      t.y = Math.round(e.clientY - r.top - d.oy);
+      d.el.style.left = t.x + "px";
+      d.el.style.top = t.y + "px";
+      tray.classList.toggle("remove-zone", overTray(e.clientY));
+    } else if (d.kind === "ink") {
+      if (dist > 6) d.moved = true;
+      const r = boardRect();
+      const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
+      const from = d.stroke.p.length;
+      (evs.length ? evs : [e]).forEach((ev) => d.stroke.p.push([Math.round((ev.clientX - r.left) * 10) / 10, Math.round((ev.clientY - r.top) * 10) / 10]));
+      paint(d.stroke, from);
+    }
+  }
+
+  function finish(pid, cx, cy, cancelled) {
+    const d = active.get(pid);
+    if (!d) return;
+    active.delete(pid);
+    if (d.hold) clearTimeout(d.hold);
+    if (cx == null) { cx = d.lx; cy = d.ly; }
+
+    if (d.kind === "spawn") {
+      if (d.ghost) {
+        d.ghost.remove();
+        const r = boardRect();
+        // Dropped on the board (or let go just past its edge): place it there.
+        if (cx >= r.left - 40 && cx <= r.right + 40 && cy >= r.top && cy <= r.bottom + 40) {
+          addTile(d.spec, Math.min(Math.max(cx, r.left), r.right) - r.left, Math.min(cy, r.bottom) - r.top);
+        }
+      } else if (!cancelled) {
+        addTile(d.spec);
+      }
+    } else if (d.kind === "tile") {
+      const t = tileById(d.id), el = d.el;
+      el.classList.remove("carried");
+      if (!t) { if (!el.isConnected || !tileById(+el.dataset.id)) el.remove(); updateCarryState(); return; }
+      if (d.moved) {
+        if (!cancelled && overTray(cy)) { updateCarryState(); removeTile(t.id); return; }
+        clampTo(t, el); snap(t, el); placeEl(el, t);
+        setCursorAfter(t);
+      }
+      el.style.zIndex = String(state.tiles.indexOf(t) + 1);
+      updateCarryState();
+      if (d.moved) commit();
+    } else if (d.kind === "ink") {
+      state.strokes.push(d.stroke);
+      commit();
+    }
+  }
+  function finishAll() { [...active.keys()].forEach((pid) => finish(pid, null, null, true)); }
+
+  window.addEventListener("pointermove", onMove, { passive: false });
+  window.addEventListener("pointerup", (e) => finish(e.pointerId, e.clientX, e.clientY, false));
+  window.addEventListener("pointercancel", (e) => finish(e.pointerId, null, null, true));
+  window.addEventListener("blur", finishAll);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) finishAll(); });
+  // Long-press menus and native image/text dragging would steal the pointer.
+  $("app").addEventListener("contextmenu", (e) => { if (e.target.closest(".tile, .ttile, #ink")) e.preventDefault(); });
+  document.addEventListener("dragstart", (e) => e.preventDefault());
+
+  board.addEventListener("pointerdown", (e) => {
+    if (tool === "move" && !e.target.closest(".tile") && !e.target.closest(".modebar")) select(null);
+  });
+
+  // ---------- Drawing ----------
+  let dpr = 1;
+  function sizeCanvas() {
+    dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.max(1, Math.round(board.clientWidth * dpr));
+    canvas.height = Math.max(1, Math.round(board.clientHeight * dpr));
+    redrawInk();
+  }
+  function paint(s, from) {
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.globalCompositeOperation = s.e ? "destination-out" : "source-over";
+    ctx.strokeStyle = s.c; ctx.fillStyle = s.c;
+    ctx.lineWidth = s.w; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    const p = s.p;
+    if (p.length === 1) { ctx.beginPath(); ctx.arc(p[0][0], p[0][1], s.w / 2, 0, Math.PI * 2); ctx.fill(); }
+    else {
+      ctx.beginPath();
+      const start = Math.max(0, from - 1);
+      ctx.moveTo(p[start][0], p[start][1]);
+      for (let i = start + 1; i < p.length; i++) ctx.lineTo(p[i][0], p[i][1]);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function redrawInk() {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    state.strokes.forEach((s) => paint(s, 0));
+  }
+
+  // ---------- Toolbar ----------
+  function setTool(t) {
+    tool = t;
+    $("tMove").setAttribute("aria-pressed", String(t === "move"));
+    $("tPen").setAttribute("aria-pressed", String(t === "pen"));
+    $("tEraser").setAttribute("aria-pressed", String(t === "eraser"));
+    board.classList.toggle("drawing", t === "pen");
+    board.classList.toggle("erasing", t === "eraser");
+    $("modebar").hidden = t === "move";
+    $("modeText").textContent = (t === "pen" ? "The pen is on." : "The eraser is on.") + " Hold a tile to move it, or";
+    if (t !== "move") select(null);
+  }
+  function setInk(color, id) {
+    inkColor = color;
+    ["inkBlack", "inkRed"].forEach((b) => $(b).setAttribute("aria-pressed", String(b === id)));
+    setTool("pen");
+  }
+  function setBg(bg) {
+    prefs.bg = bg;
+    board.classList.toggle("green", bg === "green");
+    $("bgYellow").setAttribute("aria-pressed", String(bg === "yellow"));
+    $("bgGreen").setAttribute("aria-pressed", String(bg === "green"));
+    save();
+  }
+  function setSize(i) {
+    prefs.size = Math.max(0, Math.min(UNITS.length - 1, i));
+    $("tSmaller").disabled = prefs.size === 0;
+    $("tBigger").disabled = prefs.size === UNITS.length - 1;
+    renderTiles(); clampAll(); save();
+  }
+  function syncButtons() {
+    const has = selId != null && tileById(selId);
+    $("tRotate").disabled = $("tCopy").disabled = $("tRemove").disabled = !has;
+    $("tUndo").disabled = !undoStack.length;
+    $("tRedo").disabled = !redoStack.length;
+  }
+
+  $("tMove").onclick = () => setTool("move");
+  $("modeBack").onclick = () => setTool("move");
+  $("tPen").onclick = () => setTool("pen");
+  $("tEraser").onclick = () => setTool("eraser");
+  $("inkBlack").onclick = () => setInk("#1F1F1F", "inkBlack");
+  $("inkRed").onclick = () => setInk("#D3302A", "inkRed");
+  $("bgYellow").onclick = () => setBg("yellow");
+  $("bgGreen").onclick = () => setBg("green");
+  $("tSmaller").onclick = () => setSize(prefs.size - 1);
+  $("tBigger").onclick = () => setSize(prefs.size + 1);
+  $("tUndo").onclick = undo;
+  $("tRedo").onclick = redo;
+  $("tRotate").onclick = () => {
+    const t = tileById(selId); if (!t) return;
+    t.rot = ((t.rot || 0) + 90) % 360;
+    const el = elById(t.id); clampTo(t, el); placeEl(el, t); commit();
+  };
+  $("tCopy").onclick = () => {
+    const t = tileById(selId); if (!t) return;
+    const c = Object.assign({}, t, { id: nextId++, x: -9999, y: -9999 });
+    state.tiles.push(c); renderTiles();
+    const ce = elById(c.id);
+    const right = { x: t.x + elById(t.id).offsetWidth + 3, y: t.y };
+    const p = !hits(right.x, right.y, ce.offsetWidth, ce.offsetHeight, c.id) && right.x + ce.offsetWidth <= board.clientWidth ? right : freeSpot(ce.offsetWidth, ce.offsetHeight);
+    c.x = p.x; c.y = p.y; clampTo(c, ce); placeEl(ce, c);
+    setCursorAfter(c); select(c.id); commit();
+  };
+  $("tRemove").onclick = () => { if (selId != null) removeTile(selId); };
+  $("tWipe").onclick = () => { state.strokes = []; redrawInk(); commit(); };
+  let clearTimer = null;
+  $("tClear").onclick = () => {
+    const b = $("tClear");
+    if (!b.classList.contains("armed")) {
+      b.classList.add("armed"); $("clearLabel").textContent = "Tap again";
+      clearTimer = setTimeout(() => { b.classList.remove("armed"); $("clearLabel").textContent = "Clear all"; }, 3000);
+      return;
+    }
+    clearTimeout(clearTimer);
+    b.classList.remove("armed"); $("clearLabel").textContent = "Clear all";
+    finishAll();
+    state = { tiles: [], strokes: [] }; selId = null; cursor = null;
+    renderTiles(); redrawInk(); commit();
+  };
+
+  // ---------- Keyboard ----------
+  document.addEventListener("keydown", (e) => {
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && e.key.toLowerCase() === "z") { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+    if (mod && e.key.toLowerCase() === "y") { e.preventDefault(); redo(); return; }
+    if (mod || e.altKey || busy()) return;
+    const t = selId != null && tileById(selId);
+    if (t && (e.key === "Delete" || e.key === "Backspace")) { e.preventDefault(); removeTile(t.id); return; }
+    if (t && e.key.startsWith("Arrow")) {
+      e.preventDefault();
+      const step = e.shiftKey ? 20 : 4;
+      if (e.key === "ArrowLeft") t.x -= step;
+      if (e.key === "ArrowRight") t.x += step;
+      if (e.key === "ArrowUp") t.y -= step;
+      if (e.key === "ArrowDown") t.y += step;
+      const el = elById(t.id); clampTo(t, el); placeEl(el, t); commit();
+      return;
+    }
+    if (e.key === "Escape") { select(null); setTool("move"); return; }
+    // Typing a letter adds that tile (q gives "qu", Shift gives a capital).
+    if (/^[a-z]$/i.test(e.key) && !e.target.closest("input, textarea")) {
+      let text = e.key;
+      if (text.toLowerCase() === "q") text = text === "Q" ? "QU" : "qu";
+      addTile({ text, kind: vowelOr(text) });
+    }
+  });
+  tilesLayer.addEventListener("keydown", (e) => {
+    const el = e.target.closest(".tile");
+    if (el && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); select(+el.dataset.id); }
+  });
+
+  // ---------- Start ----------
+  renderTray();
+  setBg(prefs.bg);
+  setSize(prefs.size);
+  sizeCanvas();
+  new ResizeObserver(() => { sizeCanvas(); clampAll(); }).observe(board);
+  if (firstVisit) {
+    // A sample word so the board shows how it works; Clear all removes it.
+    [{ text: "sh", kind: "cons" }, { text: "i", kind: "vowel" }, { text: "p", kind: "cons" }].forEach((s) => addTile(s));
+    undoStack.length = 0; lastSnap = JSON.stringify(state); select(null);
+  }
+  syncButtons();
+})();
+</script>
+
+</html>
