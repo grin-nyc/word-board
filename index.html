@@ -1,9 +1,4 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<style>body{margin:0}[hidden]{display:none!important}</style>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>Word Building Board</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -29,6 +24,8 @@
   --suffix: #B8322A;
   --suffix2: #7E2522;
   --focus: #1D5FD1;
+  --glued: #1F5FA8;
+  --rctrl: #7B3FA0;
   --font-tile: "Andika", "Century Gothic", "Trebuchet MS", sans-serif;
   --font-ui: "Lexend", "Segoe UI", system-ui, sans-serif;
   color-scheme: light;
@@ -44,6 +41,14 @@ button { font: inherit; color: inherit; }
 /* ---------- Tray ---------- */
 .tray { background: var(--tray); border-bottom: 2px solid var(--tray-well); position: relative; z-index: 5; transition: background .15s; }
 .tray.remove-zone { background: #FBE3DF; }
+/* Fold tab: a small arrow hanging under the tray that hides or shows the tiles. */
+.trayfold { position: absolute; left: 50%; top: 100%; margin-top: 2px; transform: translateX(-50%); width: 72px; height: 18px; padding: 0; border: 0; border-radius: 0 0 12px 12px; background: var(--tray-well); color: var(--muted); display: grid; place-items: center; cursor: pointer; opacity: .85; transition: opacity .15s, color .15s, height .15s; }
+.trayfold:hover, .trayfold:focus-visible { opacity: 1; color: var(--ink); height: 22px; }
+.trayfold svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; transition: transform .2s; }
+.tray.folded .tabs, .tray.folded .panel { display: none; }
+.tray.folded { min-height: 6px; }
+.tray.folded .trayfold { opacity: 1; background: var(--forest); color: var(--butter); }
+.tray.folded .trayfold svg { transform: rotate(180deg); }
 .tray.remove-zone::after { content: "Let go to remove the tile"; position: absolute; right: 16px; bottom: 8px; padding: 4px 10px; border-radius: 8px; background: var(--suffix); color: #fff; font-size: 13px; font-weight: 600; }
 .tabs { display: flex; gap: 6px; overflow-x: auto; padding: 10px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); scrollbar-width: thin; }
 .tab { flex: 0 0 auto; border: 0; border-radius: 10px; padding: 9px 16px; background: var(--tray-well); color: var(--ink); font-size: 14px; font-weight: 500; cursor: pointer; box-shadow: inset 0 -3px 0 rgba(0,0,0,.08); }
@@ -70,6 +75,11 @@ button { font: inherit; color: inherit; }
 .ttile.k-root { color: var(--root); border-color: var(--root); }
 .ttile.k-suffix { color: var(--suffix); border-color: var(--suffix); }
 .ttile.k-suffix2 { color: var(--suffix2); border-color: var(--suffix2); }
+.ttile.k-glued, .tile.k-glued { color: var(--glued); border-color: var(--glued); }
+.ttile.k-vteam, .tile.k-vteam { color: var(--vowel); border-color: var(--vowel); }
+.ttile.k-rctrl, .tile.k-rctrl { color: var(--rctrl); border-color: var(--rctrl); }
+.ttile.k-silent, .tile.k-silent { color: #6F6E64; border: 3px dashed #6F6E64; background: #F1EEE4; }
+.ttile.k-silent { border-width: 2px; }
 .ttile.k-label { border-radius: 999px; font-family: var(--font-ui); font-size: 13px; font-weight: 600; padding: 0 12px; }
 .ttile.k-color { width: 36px; border-color: rgba(0,0,0,.55); }
 .ttile.k-heart { border: 0; background: transparent; box-shadow: none; width: 40px; }
@@ -80,13 +90,65 @@ button { font: inherit; color: inherit; }
 /* While a tile is carried, it can travel over the tray (to remove it) without being clipped. */
 .board.carrying { overflow: visible; z-index: 10; }
 .layer { position: absolute; inset: 0; }
+#tiles { pointer-events: none; }
+#tiles .tile { pointer-events: auto; }
+
+/* ---------- Orthographic mapper ---------- */
+#mapper { --line: rgba(35,36,31,.55); --boxline: rgba(35,36,31,.7); --boxfill: rgba(255,255,255,.4); --dot: rgba(35,36,31,.18); --doton: var(--forest); --label: rgba(35,36,31,.72); }
+.board.green #mapper { --line: rgba(255,255,255,.6); --boxline: rgba(255,255,255,.8); --boxfill: rgba(255,255,255,.08); --dot: rgba(255,255,255,.2); --doton: var(--butter); --label: rgba(255,255,255,.8); }
+.mcap { position: absolute; left: 50%; transform: translateX(-50%); width: calc(100% - 32px); text-align: center; font-size: 14px; color: var(--label); pointer-events: none; text-wrap: balance; }
+.mcap b { font-weight: 600; }
+.mbox { position: absolute; border: 3px solid var(--boxline); background: var(--boxfill); border-radius: 12px; pointer-events: none; }
+.mdot { position: absolute; border-radius: 50%; border: 3px solid var(--boxline); background: var(--dot); padding: 0; cursor: pointer; transition: background .12s, scale .12s; }
+.mdot.on { background: var(--doton); scale: 1.15; }
+.mlabel { position: absolute; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--label); pointer-events: none; }
+.mline { position: absolute; border-top: 2px solid var(--line); pointer-events: none; }
+.mline.mid { border-top-style: dashed; }
+.mline.base { border-top-width: 3px; }
+.mslot { position: absolute; border: 3px dashed var(--boxline); border-radius: 12px; opacity: .55; pointer-events: none; }
+.mslot.full { opacity: .9; }
+.mslotlabel { position: absolute; font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; color: var(--label); text-align: center; pointer-events: none; opacity: .8; }
+.marrow { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.board.chaining .mcap { display: none; }
+
+/* ---------- Word chains ---------- */
+.chainbar { position: absolute; z-index: 9400; top: 10px; left: 10px; display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 14px; background: var(--ink); color: #fff; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,.2); max-width: calc(100% - 20px); flex-wrap: wrap; }
+.chainbar .cname { padding: 0 6px 0 8px; color: rgba(255,255,255,.7); }
+.chainbar .cword { min-width: 84px; padding: 4px 12px; border-radius: 10px; background: rgba(255,255,255,.12); font-family: var(--font-tile); font-size: 22px; text-align: center; letter-spacing: .02em; }
+.chainbar .cword.hid { letter-spacing: .25em; color: rgba(255,255,255,.55); }
+.chainbar .cpos { color: rgba(255,255,255,.7); padding: 0 4px; font-variant-numeric: tabular-nums; }
+.chainbar button { border: 0; border-radius: 10px; padding: 7px 12px; background: rgba(255,255,255,.14); color: #fff; font-weight: 600; cursor: pointer; }
+.chainbar button.go { background: var(--butter); color: var(--forest-dark); }
+.chainbar button:disabled { opacity: .35; cursor: default; }
+.sheet { position: fixed; inset: 0; z-index: 20000; background: rgba(20,22,18,.45); display: grid; place-items: center; padding: 16px; }
+.sheet .card { background: var(--tray); color: var(--ink); border-radius: 16px; width: min(560px, 100%); max-height: calc(100% - 32px); overflow-y: auto; padding: 18px 20px 20px; box-shadow: 0 18px 50px rgba(0,0,0,.3); }
+.sheet h2 { margin: 0 0 4px; font-size: 20px; font-weight: 600; }
+.sheet h3 { margin: 16px 0 8px; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.sheet p { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.45; }
+.sheet .chains { display: grid; gap: 6px; }
+.sheet .chainrow { display: flex; gap: 6px; }
+.sheet .pick { flex: 1; text-align: left; border: 0; border-radius: 10px; padding: 9px 12px; background: var(--tray-well); cursor: pointer; font-size: 14px; }
+.sheet .pick:hover { background: #E4DECB; }
+.sheet .pick b { font-weight: 600; display: block; }
+.sheet .pick span { font-family: var(--font-tile); font-size: 13px; color: var(--muted); }
+.sheet .del { border: 0; border-radius: 10px; width: 40px; background: var(--tray-well); color: var(--suffix); cursor: pointer; font-size: 16px; }
+.sheet input, .sheet textarea { width: 100%; border: 2px solid var(--tray-well); border-radius: 10px; padding: 9px 11px; font: 15px var(--font-tile); background: #fff; color: var(--ink); }
+.sheet textarea { min-height: 76px; resize: vertical; margin-top: 6px; }
+.sheet .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+.sheet .btn { border: 0; border-radius: 10px; padding: 9px 16px; background: var(--tray-well); font-weight: 600; cursor: pointer; }
+.sheet .btn.primary { background: var(--forest); color: var(--butter); box-shadow: inset 0 -3px 0 var(--forest-dark); }
+.sheet .err { color: var(--suffix); font-size: 13px; margin-top: 6px; min-height: 1em; }
+.tool.count { cursor: default; }
+.tool.count .face { background: var(--tray-well); color: var(--ink); box-shadow: none; font-size: 20px; font-weight: 600; }
 #ink { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 9000; pointer-events: none; touch-action: none; }
 .board.drawing #ink { pointer-events: auto; cursor: crosshair; }
 .board.erasing #ink { pointer-events: auto; cursor: cell; }
+.board.marking #ink { pointer-events: auto; cursor: crosshair; }
 .board.carrying #ink { pointer-events: none; }
 .hint { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); width: min(560px, calc(100% - 32px)); margin: 0; text-align: center; font-size: 14px; color: rgba(35,36,31,.62); pointer-events: none; text-wrap: balance; }
 .board.green .hint { color: rgba(255,255,255,.7); }
-.modebar { position: absolute; z-index: 9500; top: 10px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: 7px 8px 7px 14px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,.2); white-space: nowrap; max-width: calc(100% - 24px); }
+.modebar { position: absolute; z-index: 9500; bottom: 10px; right: 10px; display: flex; align-items: center; gap: 10px; padding: 7px 8px 7px 14px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,.2); white-space: nowrap; max-width: calc(100% - 24px); }
+.modebar span { overflow: hidden; text-overflow: ellipsis; }
 .modebar button { border: 0; border-radius: 999px; padding: 6px 12px; background: var(--butter); color: var(--forest-dark); font-weight: 600; cursor: pointer; }
 
 /* board tiles */
@@ -124,6 +186,9 @@ button { font: inherit; color: inherit; }
 .tool.bg[aria-pressed="true"] .face svg { opacity: 1; }
 
 @media (max-width: 640px) {
+  .chainbar .cname { display: none; }
+  .chainbar .cword { font-size: 18px; min-width: 64px; }
+  .chainbar button { padding: 6px 9px; }
   .group.letters .row { grid-template-columns: repeat(9, auto); }
   .toolbar { gap: 6px 10px; }
   .tool { min-width: 40px; font-size: 10px; }
@@ -138,20 +203,44 @@ button { font: inherit; color: inherit; }
   <header class="tray" id="tray">
     <div class="tabs" role="tablist" id="tabs" aria-label="Tile sets"></div>
     <div class="panel" role="tabpanel" id="panel"></div>
+    <button type="button" class="trayfold" id="trayFold" aria-expanded="true" aria-controls="panel" aria-label="Hide tiles" title="Hide tiles"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
   </header>
 
   <main class="board" id="board" aria-label="Word building board">
+    <div class="layer" id="mapper" hidden></div>
     <div class="layer" id="tiles"></div>
     <canvas id="ink"></canvas>
     <p class="hint" id="hint">Tap a tile to add it to the board, or drag it where you want it. Drag a tile back up to the tray to remove it. You can also type letters on your keyboard.</p>
+    <div class="chainbar" id="chainBar" hidden aria-label="Word chain">
+      <span class="cname" id="chainName"></span>
+      <button type="button" id="chPrev" aria-label="Previous word">‹</button>
+      <span class="cword" id="chainWord" aria-live="polite"></span>
+      <span class="cpos" id="chainPos"></span>
+      <button type="button" id="chShow">Show</button>
+      <button type="button" class="go" id="chNext">Next ›</button>
+      <button type="button" id="chEnd" aria-label="End chain">✕</button>
+    </div>
     <div class="modebar" id="modebar" hidden><span id="modeText">The pen is on.</span><button type="button" id="modeBack">Move tiles</button></div>
   </main>
 
   <footer class="toolbar">
+    <div class="tgroup" role="group" aria-label="Screen">
+      <button class="tool" id="scrBoard" aria-pressed="true"><span class="face"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v16M15 4v16"/></svg></span>Board</button>
+      <button class="tool" id="scrMapper" aria-pressed="false"><span class="face"><svg viewBox="0 0 24 24"><rect x="2" y="5" width="6" height="7" rx="1"/><rect x="9" y="5" width="6" height="7" rx="1"/><rect x="16" y="5" width="6" height="7" rx="1"/><circle cx="5" cy="17" r="1.4"/><circle cx="12" cy="17" r="1.4"/><circle cx="19" cy="17" r="1.4"/></svg></span>Mapper</button>
+      <button class="tool" id="tChains"><span class="face"><svg viewBox="0 0 24 24"><rect x="2" y="9" width="9" height="6" rx="3"/><rect x="13" y="9" width="9" height="6" rx="3"/><path d="M9 12h6"/></svg></span>Chains</button>
+    </div>
+    <div class="tgroup" role="group" aria-label="Sound boxes" id="mapTools" hidden>
+      <button class="tool" id="mFewer" aria-label="Fewer sound boxes"><span class="face"><svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg></span>Fewer</button>
+      <div class="tool count" aria-live="polite"><span class="face" id="mCount">3</span>Sounds</div>
+      <button class="tool" id="mMore" aria-label="More sound boxes"><span class="face"><svg viewBox="0 0 24 24"><path d="M6 12h12M12 6v12"/></svg></span>More</button>
+      <button class="tool" id="mNext"><span class="face"><svg viewBox="0 0 24 24"><path d="M5 12h13M13 6l6 6-6 6"/></svg></span>Next word</button>
+    </div>
     <div class="tgroup" role="group" aria-label="Mode">
       <button class="tool" id="tMove" aria-pressed="true"><span class="face"><svg viewBox="0 0 24 24"><path d="M5 3l14 7.5-6.2 1.7L10 18.5z"/></svg></span>Move</button>
       <button class="tool" id="tPen" aria-pressed="false"><span class="face"><svg viewBox="0 0 24 24"><path d="M4 20l1-4.5L16 4.5l3.5 3.5L8.5 19z"/><path d="M14 7l3 3"/></svg></span>Draw</button>
       <button class="tool" id="tEraser" aria-pressed="false"><span class="face"><svg viewBox="0 0 24 24"><path d="M9 20h11"/><path d="M4.5 15.5l9-9 6 6-7.5 7.5H8.5z"/><path d="M9.5 10.5l6 6"/></svg></span>Erase</button>
+      <button class="tool" id="tScoop" aria-pressed="false"><span class="face"><svg viewBox="0 0 24 24"><path d="M3 8c3 11 15 11 18 0"/></svg></span>Scoop</button>
+      <button class="tool" id="tDivide" aria-pressed="false"><span class="face"><svg viewBox="0 0 24 24"><rect x="2" y="8" width="7" height="8" rx="1.5"/><rect x="15" y="8" width="7" height="8" rx="1.5"/><path d="M12 4v16"/></svg></span>Divide</button>
     </div>
     <div class="tgroup" role="group" aria-label="Pen color">
       <button class="tool" id="inkBlack" aria-pressed="true"><span class="face"><span class="inkdot" style="background:#1F1F1F"></span></span>Black pen</button>
@@ -165,6 +254,9 @@ button { font: inherit; color: inherit; }
     <div class="tgroup" role="group" aria-label="History">
       <button class="tool" id="tUndo" disabled><span class="face"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></span>Undo</button>
       <button class="tool" id="tRedo" disabled><span class="face"><svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></span>Redo</button>
+    </div>
+    <div class="tgroup" role="group" aria-label="View" id="viewTools">
+      <button class="tool" id="tFull" aria-pressed="false"><span class="face"><svg viewBox="0 0 24 24" id="fullIcon"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></span><span id="fullLabel">Full screen</span></button>
     </div>
     <div class="tgroup" role="group" aria-label="Clear">
       <button class="tool" id="tWipe"><span class="face"><svg viewBox="0 0 24 24"><path d="M4 20l1-4.5L16 4.5l3.5 3.5L8.5 19z"/><path d="M3 3l18 18"/></svg></span>Wipe ink</button>
@@ -181,6 +273,21 @@ button { font: inherit; color: inherit; }
   </footer>
 </div>
 
+<div class="sheet" id="chainSheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="card">
+    <h2 id="sheetTitle">Word chains</h2>
+    <p>Each word changes one sound from the word before. Students keep their tiles and swap only the tile that changed. On the Mapper, the number of sound boxes sets itself for each word.</p>
+    <h3>Ready-made</h3>
+    <div class="chains" id="presetList"></div>
+    <div id="mineWrap"><h3>My chains</h3><div class="chains" id="mineList"></div></div>
+    <h3>Make your own</h3>
+    <input id="chainNameIn" placeholder="Name, e.g. Short o week 3" maxlength="40">
+    <textarea id="chainWordsIn" placeholder="Type words in order, separated by spaces, commas or arrows:&#10;hop hope rope robe rob rod rode&#10;Tip: if a box count looks wrong, split the sounds with dashes, e.g. b-o-x or t-r-ai-n"></textarea>
+    <div class="err" id="chainErr"></div>
+    <div class="actions"><button type="button" class="btn" id="sheetClose">Close</button><button type="button" class="btn primary" id="chainStart">Save &amp; start</button></div>
+  </div>
+</div>
+
 <script>
 (() => {
   // ---------- Tile sets ----------
@@ -195,20 +302,21 @@ button { font: inherit; color: inherit; }
     markers:  { title: "Markers", special: "markers" },
     blendsI:  { title: "Initial blends", kind: "cons", tiles: "bl cl fl gl pl sl spl br cr dr fr gr pr tr scr sk sn sm sp sw tw str" },
     blendsF:  { title: "Final blends", kind: "cons", tiles: "nd nt mp ft st ct" },
-    glued:    { title: "Glued sounds", kind: "cons", tiles: "ing ang ong ung ink ank onk unk" },
-    vteams:   { title: "Vowel teams", kind: "cons", tiles: "ee ea ai ay oa ow oe oo ie igh ou oi oy au aw ue eu" },
-    rctrl:    { title: "R-controlled", kind: "cons", tiles: "ar or er ir ur air ear oar ore our oor" },
+    glued:    { title: "Glued sounds", kind: "glued", tiles: "ing ang ong ung ink ank onk unk" },
+    vteams:   { title: "Vowel teams", kind: "vteam", tiles: "ee ea ai ay oa ow oe oo ie igh ou oi oy au aw ue eu" },
+    rctrl:    { title: "R-controlled", kind: "rctrl", tiles: "ar or er ir ur air ear oar ore our oor" },
     prefix:   { title: "Prefixes", cls: "g-prefix", kind: "prefix", tiles: "re de pre pro un in mis dis con sub non mid trans inter anti" },
     root:     { title: "Roots", cls: "g-root", kind: "root", tiles: "ject tract rupt struct sist gress sect port form tort cur fer mote spect vis vid" },
     suffix:   { title: "Suffixes", cls: "g-suffix", kind: "suffix", tiles: "s es ing ed er est ful less able ible ish ive ly en ness ment al" },
     suffix2:  { title: "Advanced suffixes", cls: "g-suffix2", kind: "suffix2", tiles: "(t)ion (s)ion (c)ian (t)ious (c)ious (x)ious (t)ient (c)ient (t)iate (c)iate ture" },
     caps:     { title: "Capital letters", cls: "letters", kind: vowelOr, tiles: "A B C D E F G H I J K L M N O P QU R S T U V W X Y Z" },
+    silent:   { title: "Silent e", kind: "silent", name: "silent e", tiles: "e" },
     labels:   { title: "Syllable types", kind: "label", tiles: "closed|open|magic e|vowel teams|r-controlled|consonant le", sep: "|" }
   };
   const TABS = [
-    { id: "basic",  name: "Basic Tiles", groups: ["letters", "digraphs", "markers"], extra: ["blendsI", "blendsF"], extraLabel: "Initial and Final Blends" },
-    { id: "glued",  name: "Glued Sounds", groups: ["letters", "glued", "digraphs", "markers"], extra: ["blendsI", "blendsF"], extraLabel: "Initial and Final Blends" },
-    { id: "vowels", name: "Advanced Vowels", groups: ["vteams", "rctrl"] },
+    { id: "basic",  name: "Basic Tiles", groups: ["letters", "digraphs", "silent", "markers"], extra: ["blendsI", "blendsF"], extraLabel: "Initial and Final Blends" },
+    { id: "glued",  name: "Glued Sounds", groups: ["letters", "glued", "digraphs", "silent", "markers"], extra: ["blendsI", "blendsF"], extraLabel: "Initial and Final Blends" },
+    { id: "vowels", name: "Advanced Vowels", groups: ["vteams", "rctrl", "silent"] },
     { id: "morph",  name: "Prefixes, Roots & Suffixes", groups: ["prefix", "root", "suffix", "suffix2"] },
     { id: "caps",   name: "Capital Letters", groups: ["caps"] },
     { id: "labels", name: "Syllable Labels", groups: ["labels"], note: true }
@@ -226,23 +334,40 @@ button { font: inherit; color: inherit; }
   const ctx = canvas.getContext("2d");
 
   // ---------- State ----------
-  let state = { tiles: [], strokes: [] };
-  let prefs = { tab: "basic", extra: false, size: 2, bg: "yellow" };
+  // Each screen keeps its own tiles and ink.
+  let store = { board: { tiles: [], strokes: [] }, mapper: { tiles: [], strokes: [], boxes: 3 } };
+  let prefs = { tab: "basic", extra: false, size: 2, bg: "yellow", screen: "board", folded: false };
   let tool = "move", inkColor = "#1F1F1F", selId = null, nextId = 1;
   let cursor = null; // where the next tapped tile lands
   const undoStack = [], redoStack = [];
 
   try {
     const saved = JSON.parse(localStorage.getItem(STORE) || "null");
-    if (saved && saved.state && Array.isArray(saved.state.tiles)) { state = saved.state; Object.assign(prefs, saved.prefs || {}); }
+    if (saved && saved.store) Object.assign(store, saved.store);
+    else if (saved && saved.state && Array.isArray(saved.state.tiles)) store.board = saved.state; // older saves
+    if (saved) Object.assign(prefs, saved.prefs || {});
   } catch (e) {}
-  if (!Array.isArray(state.strokes)) state.strokes = [];
-  nextId = state.tiles.reduce((m, t) => Math.max(m, t.id), 0) + 1;
+  ["board", "mapper"].forEach((k) => {
+    const s = store[k] = store[k] || {};
+    if (!Array.isArray(s.tiles)) s.tiles = [];
+    if (!Array.isArray(s.strokes)) s.strokes = [];
+  });
+  store.mapper.boxes = Math.max(1, Math.min(8, +store.mapper.boxes || 3));
+  if (!store[prefs.screen]) prefs.screen = "board";
+  let state = store[prefs.screen];
+  nextId = store.board.tiles.concat(store.mapper.tiles).reduce((m, t) => Math.max(m, t.id), 0) + 1;
   let lastSnap = JSON.stringify(state);
-  const firstVisit = !state.tiles.length && !state.strokes.length;
 
-  const unit = () => UNITS[prefs.size];
-  const save = () => { try { localStorage.setItem(STORE, JSON.stringify({ state, prefs })); } catch (e) {} };
+  // On the mapper, tiles shrink if needed so every sound box and the writing lines fit the board.
+  const unit = () => {
+    const base = UNITS[prefs.size];
+    if (prefs.screen !== "mapper" || !board.clientWidth) return base;
+    const n = store.mapper.boxes, W = board.clientWidth, H = board.clientHeight;
+    const fitW = (W - 32) / (1.77 * n + 1.12), fitH = (H - 190) / 3.9;
+    return Math.max(34, Math.floor(Math.min(base, fitW, fitH)));
+  };
+  const save = () => { try { localStorage.setItem(STORE, JSON.stringify({ store, prefs })); } catch (e) {} };
+  const isMapper = () => prefs.screen === "mapper";
 
   function commit() {
     const snap = JSON.stringify(state);
@@ -251,11 +376,11 @@ button { font: inherit; color: inherit; }
     if (undoStack.length > 150) undoStack.shift();
     redoStack.length = 0;
     lastSnap = snap;
-    save(); syncButtons();
+    save(); syncButtons(); updateArrow();
   }
   function restore(snap) {
-    lastSnap = snap; state = JSON.parse(snap); selId = null; cursor = null;
-    renderTiles(); clampAll(); redrawInk(); save(); syncButtons();
+    lastSnap = snap; state = JSON.parse(snap); store[prefs.screen] = state; selId = null; cursor = null;
+    renderTiles(); renderMapper(); clampAll(); redrawInk(); save(); syncButtons();
   }
   function undo() { if (!busy() && undoStack.length) { redoStack.push(lastSnap); restore(undoStack.pop()); } }
   function redo() { if (!busy() && redoStack.length) { undoStack.push(lastSnap); restore(redoStack.pop()); } }
@@ -266,7 +391,7 @@ button { font: inherit; color: inherit; }
     if (g.special === "markers") {
       return [{ text: "", kind: "heart", name: "heart" }].concat(COLORS.map(([name, hex]) => ({ text: "", kind: "color", color: hex, name: name + " marker" })));
     }
-    return g.tiles.split(g.sep || " ").map((t) => ({ text: t, kind: typeof g.kind === "function" ? g.kind(t) : g.kind }));
+    return g.tiles.split(g.sep || " ").map((t) => ({ text: t, kind: typeof g.kind === "function" ? g.kind(t) : g.kind, name: g.name }));
   }
   function trayTile(spec) {
     const b = document.createElement("button");
@@ -365,7 +490,7 @@ button { font: inherit; color: inherit; }
       if (!el.classList.contains("carried")) { el.style.zIndex = String(i + 1); placeEl(el, t); }
     });
     [...tilesLayer.children].forEach((el) => { if (!live.has(el.dataset.id) && !el.classList.contains("carried")) el.remove(); });
-    hint.hidden = state.tiles.length > 0;
+    hint.hidden = state.tiles.length > 0 || isMapper();
   }
 
   function select(id) {
@@ -415,8 +540,18 @@ button { font: inherit; color: inherit; }
   }
   // Pull a dropped tile flush against a neighbour so letters join into a word.
   function snap(t, el) {
+    delete t.box;
     if (t.rot) return;
     const w = el.offsetWidth, h = el.offsetHeight, gap = 3, reach = Math.max(20, unit() * .4);
+    if (isMapper() && t.kind === "silent") {
+      const b = mapGeom().slot, cx = t.x + w / 2, cy = t.y + h / 2, pad = 20;
+      if (cx > b.x - pad && cx < b.x + b.w + pad && cy > b.y - pad && cy < b.y + b.h + pad && !boxTaken("e", t.id)) { t.box = "e"; centerInBox(t, el); return; }
+    }
+    if (isMapper() && boxable(t.kind)) {
+      const cx = t.x + w / 2, cy = t.y + h / 2, pad = 14;
+      const i = mapGeom().boxes.findIndex((b, i) => cx > b.x - pad && cx < b.x + b.w + pad && cy > b.y - pad && cy < b.y + b.h + pad && !boxTaken(i, t.id));
+      if (i >= 0) { t.box = i; centerInBox(t, el); return; }
+    }
     const W = board.clientWidth, H = board.clientHeight;
     let best = null;
     state.tiles.forEach((o) => {
@@ -440,8 +575,16 @@ button { font: inherit; color: inherit; }
     if (el) cursor = { x: t.x + el.offsetWidth + 3, y: t.y };
   }
   // Where a tapped tile goes: right after the last tile, else the first open space.
-  function freeSpot(w, h) {
+  function freeSpot(w, h, kind) {
     const W = board.clientWidth, H = board.clientHeight, pad = 24;
+    if (isMapper() && kind === "silent" && !boxTaken("e", null)) {
+      const b = mapGeom().slot;
+      return { x: Math.round(b.x + (b.w - w) / 2), y: Math.round(b.y + (b.h - h) / 2), box: "e" };
+    }
+    if (isMapper() && boxable(kind)) {
+      const g = mapGeom(), i = g.boxes.findIndex((b, i) => !boxTaken(i, null));
+      if (i >= 0) { const b = g.boxes[i]; return { x: Math.round(b.x + (b.w - w) / 2), y: Math.round(b.y + (b.h - h) / 2), box: i }; }
+    }
     const fits = (x, y) => x >= 0 && y >= 0 && x + w <= W && y + h <= H && !hits(x, y, w, h, null);
     if (cursor) {
       let { x, y } = cursor;
@@ -463,8 +606,9 @@ button { font: inherit; color: inherit; }
     renderTiles();
     const el = elById(t.id);
     if (x == null) {
-      const p = freeSpot(el.offsetWidth, el.offsetHeight);
+      const p = freeSpot(el.offsetWidth, el.offsetHeight, t.kind);
       t.x = p.x; t.y = p.y;
+      if (p.box != null) t.box = p.box;
     } else {
       t.x = x - el.offsetWidth / 2; t.y = y - el.offsetHeight / 2;
       clampTo(t, el); snap(t, el);
@@ -479,6 +623,226 @@ button { font: inherit; color: inherit; }
     if (selId === id) selId = null;
     renderTiles(); commit(); syncButtons();
   }
+
+  // ---------- Orthographic mapper ----------
+  // Say it, tap a dot for each sound, put one tile (grapheme) in each sound box, write it, read it.
+  const mapperEl = $("mapper");
+  const boxable = (kind) => kind !== "heart" && kind !== "label" && kind !== "silent";
+  const boxTaken = (i, exceptId) => state.tiles.some((o) => o.box === i && o.id !== exceptId);
+  function mapGeom() {
+    const W = board.clientWidth, H = board.clientHeight, u = unit(), n = store.mapper.boxes;
+    let bw = Math.round(u * 1.55), gap = Math.round(u * .22), sw = Math.round(u * 1.12);
+    const need = n * (bw + gap) + sw, room = W - 32;
+    if (need > room) { const k = room / need; bw = Math.floor(bw * k); gap = Math.floor(gap * k); sw = Math.floor(sw * k); }
+    const bh = Math.round(u * 1.45);
+    // The boxes are centred; the silent-e spot sits just after the last one.
+    const total = n * bw + (n - 1) * gap, whole = total + gap + sw;
+    const x0 = Math.round(Math.max(16, Math.min((W - whole) / 2 + (gap + sw) * .25, W - 16 - whole)));
+    // leave room above the boxes for the steps line (or the chain bar) and the silent-e arrow
+    const cb = $("chainBar"), top = prefs.chain && !cb.hidden ? cb.offsetHeight + 10 : 52;
+    const y0 = Math.round(Math.max(top + 60, H * .16));
+    const boxes = [];
+    for (let i = 0; i < n; i++) boxes.push({ x: x0 + i * (bw + gap), y: y0, w: bw, h: bh });
+    const slot = { x: x0 + n * (bw + gap), y: y0, w: sw, h: bh };
+    const dotR = Math.max(10, Math.round(u * .17)), dotY = y0 + bh + Math.round(u * .3) + dotR;
+    const writeTop = dotY + dotR + Math.max(40, Math.round(u * .7));
+    const lineH = Math.min(Math.round(u * 1.4), H - writeTop - 12);
+    return { W, H, u, boxes, slot, dotR, dotY, lineH, writeTop };
+  }
+  function centerInBox(t, el) {
+    const g = mapGeom(), b = t.box === "e" ? g.slot : g.boxes[t.box];
+    if (!b) { delete t.box; return; }
+    t.x = Math.round(b.x + (b.w - el.offsetWidth) / 2);
+    t.y = Math.round(b.y + (b.h - el.offsetHeight) / 2);
+  }
+  function renderMapper() {
+    mapperEl.hidden = !isMapper();
+    $("mapTools").hidden = !isMapper();
+    $("scrBoard").setAttribute("aria-pressed", String(!isMapper()));
+    $("scrMapper").setAttribute("aria-pressed", String(isMapper()));
+    if (!isMapper()) return;
+    const n = store.mapper.boxes;
+    $("mCount").textContent = n;
+    $("mFewer").disabled = n <= 1; $("mMore").disabled = n >= 8;
+    const g = mapGeom();
+    if (g.W < 120) return;
+    const lit = new Set([...mapperEl.querySelectorAll(".mdot.on")].map((d) => d.dataset.i));
+    let html = '<div class="mcap" style="top:28px"><b>1</b> Say it · <b>2</b> Tap a dot for each sound · <b>3</b> Put a tile in each box · <b>4</b> Write it · <b>5</b> Read it</div>';
+    g.boxes.forEach((b, i) => {
+      html += '<div class="mbox" style="left:' + b.x + 'px;top:' + b.y + 'px;width:' + b.w + 'px;height:' + b.h + 'px"></div>';
+      const d = g.dotR * 2;
+      html += '<button type="button" class="mdot' + (lit.has(String(i)) ? " on" : "") + '" data-i="' + i + '" aria-label="Sound ' + (i + 1) + '" style="left:' + Math.round(b.x + b.w / 2 - g.dotR) + 'px;top:' + (g.dotY - g.dotR) + 'px;width:' + d + 'px;height:' + d + 'px"></button>';
+    });
+    const sl = g.slot;
+    html += '<div class="mslot" id="mSlot" style="left:' + sl.x + 'px;top:' + sl.y + 'px;width:' + sl.w + 'px;height:' + sl.h + 'px"></div>';
+    html += '<div class="mslotlabel" style="left:' + (sl.x - 20) + 'px;width:' + (sl.w + 40) + 'px;top:' + (g.dotY - 8) + 'px">silent e<br>no sound</div>';
+    html += '<svg class="marrow" id="mArrow" aria-hidden="true"></svg>';
+    const lx = 24, lw = g.W - 48, top = g.writeTop;
+    if (g.lineH >= 36) html += '<div class="mlabel" style="left:' + lx + 'px;top:' + (top - 22) + 'px">Write it</div>';
+    if (g.lineH >= 36) html += '<div class="mline" style="left:' + lx + 'px;width:' + lw + 'px;top:' + top + 'px"></div>';
+    if (g.lineH >= 36) html += '<div class="mline mid" style="left:' + lx + 'px;width:' + lw + 'px;top:' + Math.round(top + g.lineH / 2) + 'px"></div>';
+    if (g.lineH >= 36) html += '<div class="mline base" style="left:' + lx + 'px;width:' + lw + 'px;top:' + (top + g.lineH) + 'px"></div>';
+    mapperEl.innerHTML = html;
+    updateArrow();
+  }
+  // When a silent e sits in its spot, an arrow jumps from it over the consonant back to the vowel.
+  function updateArrow() {
+    const svg = document.getElementById("mArrow"), slotEl = document.getElementById("mSlot");
+    if (!svg || !isMapper()) return;
+    const e = state.tiles.find((t) => t.box === "e");
+    if (slotEl) slotEl.classList.toggle("full", !!e);
+    if (!e) { svg.innerHTML = ""; return; }
+    const g = mapGeom(), n = g.boxes.length;
+    let vi = -1;
+    state.tiles.forEach((t) => { if (typeof t.box === "number" && t.box < n && (t.kind === "vowel" || t.kind === "vteam") && t.box > vi) vi = t.box; });
+    if (vi < 0) vi = Math.max(0, n - 2);
+    const v = g.boxes[vi], sx = g.slot.x + g.slot.w / 2, vx = v.x + v.w / 2, y = g.slot.y - 6;
+    const lift = Math.min(64, Math.max(40, (sx - vx) * .35)), cx = (sx + vx) / 2, cy = y - lift;
+    // arrowhead pointing along the curve's last direction
+    const ang = Math.atan2(y - cy, vx - cx), L = 12;
+    const h1 = [vx - L * Math.cos(ang - .5), y - L * Math.sin(ang - .5)], h2 = [vx - L * Math.cos(ang + .5), y - L * Math.sin(ang + .5)];
+    svg.innerHTML = '<path d="M' + sx + ' ' + y + ' Q' + cx + ' ' + cy + ' ' + vx + ' ' + y + '" fill="none" stroke="#C2352B" stroke-width="3.5" stroke-linecap="round"/>' +
+      '<path d="M' + h1.join(" ") + ' L' + vx + ' ' + y + ' L' + h2.join(" ") + '" fill="none" stroke="#C2352B" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>';
+  }
+  // Keeps tiles sitting in sound boxes centred after the boxes move (resize, size, box count).
+  function realignBoxes() {
+    if (!isMapper()) return false;
+    let changed = false;
+    state.tiles.forEach((t) => {
+      if (t.box == null) return;
+      const el = elById(t.id); if (!el || el.classList.contains("carried")) return;
+      if (typeof t.box === "number" && t.box >= store.mapper.boxes) { delete t.box; changed = true; return; }
+      const ox = t.x, oy = t.y; centerInBox(t, el);
+      if (t.x !== ox || t.y !== oy) { placeEl(el, t); changed = true; }
+    });
+    return changed;
+  }
+  mapperEl.addEventListener("click", (e) => {
+    const d = e.target.closest(".mdot"); if (d) d.classList.toggle("on");
+  });
+  function setScreen(s) {
+    if (s === prefs.screen) return;
+    finishAll();
+    prefs.screen = s; state = store[s];
+    undoStack.length = 0; redoStack.length = 0; lastSnap = JSON.stringify(state);
+    selId = null; cursor = null;
+    mapperEl.innerHTML = "";
+    renderTiles(); renderMapper(); realignBoxes(); clampAll(); redrawInk(); save(); syncButtons(); updateArrow();
+  }
+  function setBoxes(n) {
+    store.mapper.boxes = Math.max(1, Math.min(8, n));
+    renderTiles(); renderMapper(); realignBoxes(); commit(); updateArrow();
+  }
+
+  // ---------- Word chains ----------
+  // Rough sound count from spelling, used to set the number of sound boxes for each word.
+  // Teachers can override it by splitting a word with dashes (t-r-ai-n).
+  const GRAPHEMES = ["eigh", "tch", "dge", "igh", "air", "ear", "oar", "ore", "our", "oor", "are", "ire", "ure",
+    "ar", "or", "er", "ir", "ur", "ee", "ea", "ai", "ay", "oa", "ow", "oe", "oo", "ie", "ou", "oi", "oy", "au", "aw", "ue", "eu", "ew",
+    "sh", "th", "ch", "wh", "ph", "ck", "ng", "qu", "ff", "ll", "ss", "zz", "kn", "wr", "gh"];
+  function soundCount(word) {
+    const w = word.toLowerCase().replace(/[^a-z\-.]/g, "");
+    if (/[-.]/.test(w)) return w.split(/[-.]+/).filter(Boolean).length;
+    const seg = [];
+    for (let i = 0; i < w.length;) {
+      const g = GRAPHEMES.find((g) => w.startsWith(g, i)) || w[i];
+      seg.push(g); i += g.length;
+    }
+    // vowel-consonant-e: the final e is silent
+    const k = seg.length;
+    if (k >= 3 && seg[k - 1] === "e" && !/[aeiou]/.test(seg[k - 2]) && /^[aeiouy]$/.test(seg[k - 3])) seg.pop();
+    return Math.max(1, Math.min(8, seg.length));
+  }
+  const PRESETS = [
+    { name: "Short vowels", words: "sat sit sip tip top hop hot hat ham him" },
+    { name: "Digraphs", words: "ship shop chop chip chin thin this with wish fish" },
+    { name: "Blends", words: "lap clap clip slip slap flap flat flag lag lap" },
+    { name: "Glued sounds", words: "sing sang rang ring rink sink sank tank thank think" },
+    { name: "Silent e", words: "hop hope rope robe rob rod rode code cone phone" },
+    { name: "Vowel teams", words: "see bee beet meet meat heat seat sat sail rail" }
+  ];
+  const chainWords = (txt) => txt.split(/[\s,;→>]+|->/).map((w) => w.trim()).filter((w) => /[a-z]/i.test(w));
+  const chainBar = $("chainBar"), sheet = $("chainSheet");
+  const clearDots = () => mapperEl.querySelectorAll(".mdot.on").forEach((d) => d.classList.remove("on"));
+  function renderChainBar() {
+    const c = prefs.chain;
+    chainBar.hidden = !c;
+    board.classList.toggle("chaining", !!c);
+    if (!c) return;
+    const w = c.words[c.i], show = !!prefs.chainShow;
+    $("chainName").textContent = c.name;
+    const cw = $("chainWord");
+    cw.textContent = show ? w.replace(/[-.]/g, "") : "• • •";
+    cw.classList.toggle("hid", !show);
+    cw.setAttribute("aria-label", show ? w : "Word hidden");
+    $("chainPos").textContent = (c.i + 1) + " / " + c.words.length;
+    $("chShow").textContent = show ? "Hide" : "Show";
+    $("chPrev").disabled = c.i === 0;
+    $("chNext").disabled = c.i >= c.words.length - 1;
+    $("chNext").textContent = c.i >= c.words.length - 1 ? "Last word" : "Next ›";
+  }
+  // Moving along a chain keeps the tiles (students change only what changed), wipes the writing,
+  // resets the dots, and sets the sound boxes for the new word.
+  function goWord(i) {
+    const c = prefs.chain; if (!c) return;
+    finishAll();
+    c.i = Math.max(0, Math.min(c.words.length - 1, i));
+    store.mapper.boxes = soundCount(c.words[c.i]);
+    state.strokes = []; clearDots();
+    renderChainBar();
+    renderTiles(); renderMapper(); realignBoxes(); clampAll(); redrawInk(); commit(); updateArrow();
+    save();
+  }
+  function startChain(name, words) {
+    finishAll();
+    prefs.chain = { name, words, i: 0 }; prefs.chainShow = false;
+    state.tiles = []; state.strokes = []; selId = null; cursor = null;
+    closeSheet(); goWord(0);
+  }
+  function endChain() { prefs.chain = null; save(); renderChainBar(); renderTiles(); renderMapper(); if (realignBoxes()) commit(); updateArrow(); }
+  function chainRow(ch, mine, idx) {
+    const row = document.createElement("div"); row.className = "chainrow";
+    const b = document.createElement("button"); b.type = "button"; b.className = "pick";
+    b.innerHTML = "<b></b><span></span>";
+    b.firstChild.textContent = ch.name;
+    b.lastChild.textContent = ch.words.join(" → ");
+    b.onclick = () => startChain(ch.name, ch.words.slice());
+    row.appendChild(b);
+    if (mine) {
+      const d = document.createElement("button"); d.type = "button"; d.className = "del";
+      d.textContent = "✕"; d.setAttribute("aria-label", "Delete " + ch.name);
+      d.onclick = () => { prefs.myChains.splice(idx, 1); save(); renderSheet(); };
+      row.appendChild(d);
+    }
+    return row;
+  }
+  function renderSheet() {
+    const pl = $("presetList"); pl.innerHTML = "";
+    PRESETS.forEach((p) => pl.appendChild(chainRow({ name: p.name, words: chainWords(p.words) }, false)));
+    if (!Array.isArray(prefs.myChains)) prefs.myChains = [];
+    const ml = $("mineList"); ml.innerHTML = "";
+    prefs.myChains.forEach((c, i) => ml.appendChild(chainRow(c, true, i)));
+    $("mineWrap").hidden = !prefs.myChains.length;
+    $("chainErr").textContent = "";
+  }
+  function openSheet() { finishAll(); renderSheet(); sheet.hidden = false; setTimeout(() => { try { $("presetList").querySelector("button").focus(); } catch (e) {} }, 0); }
+  function closeSheet() { sheet.hidden = true; }
+  $("tChains").onclick = openSheet;
+  $("sheetClose").onclick = closeSheet;
+  sheet.addEventListener("pointerdown", (e) => { if (e.target === sheet) closeSheet(); });
+  $("chainStart").onclick = () => {
+    const words = chainWords($("chainWordsIn").value);
+    if (words.length < 2) { $("chainErr").textContent = "Type at least two words."; return; }
+    const name = $("chainNameIn").value.trim() || "My chain";
+    if (!Array.isArray(prefs.myChains)) prefs.myChains = [];
+    prefs.myChains.unshift({ name, words });
+    $("chainWordsIn").value = ""; $("chainNameIn").value = "";
+    startChain(name, words);
+  };
+  $("chPrev").onclick = () => prefs.chain && goWord(prefs.chain.i - 1);
+  $("chNext").onclick = () => prefs.chain && goWord(prefs.chain.i + 1);
+  $("chShow").onclick = () => { prefs.chainShow = !prefs.chainShow; save(); renderChainBar(); };
+  $("chEnd").onclick = endChain;
 
   // ---------- Pointer engine ----------
   // Every press is tracked by its pointer id in one place. Move/up/cancel are heard on the
@@ -538,13 +902,34 @@ button { font: inherit; color: inherit; }
     updateCarryState();
   }
 
-  // Pen / eraser on the canvas. Press-and-hold on a tile picks it up instead.
+  // Syllable divider: a tap near the gap between two tiles snaps a line into that gap, tile-high.
+  function dividerAt(x, y) {
+    const u = unit();
+    let best = null;
+    state.tiles.forEach((t) => {
+      if (t.rot) return;
+      const el = elById(t.id); if (!el) return;
+      const w = el.offsetWidth, h = el.offsetHeight;
+      if (y < t.y - 16 || y > t.y + h + 16) return;
+      [t.x - 1.5, t.x + w + 1.5].forEach((ex) => {
+        const dd = Math.abs(ex - x);
+        if (dd < 30 && (!best || dd < best.d)) best = { d: dd, x: ex, y1: t.y - 12, y2: t.y + h + 12 };
+      });
+    });
+    return best ? { x: Math.round(best.x), y1: best.y1, y2: best.y2 } : { x, y1: y - u * .6, y2: y + u * .6 };
+  }
+
+  // Pen / eraser / scoop / divide on the canvas. Press-and-hold on a tile picks it up instead.
   canvas.addEventListener("pointerdown", (e) => {
     if (tool === "move" || e.button > 0 || active.has(e.pointerId)) return;
     e.preventDefault();
     capture(canvas, e.pointerId);
     const r = boardRect();
-    const s = { c: inkColor, w: tool === "eraser" ? 28 : 5, e: tool === "eraser", p: [[e.clientX - r.left, e.clientY - r.top]] };
+    const px = e.clientX - r.left, py = e.clientY - r.top;
+    let s;
+    if (tool === "scoop") s = { c: inkColor, w: 4, t: "arc", p: [[px, py], [px, py]] };
+    else if (tool === "divide") { const v = dividerAt(px, py); s = { c: inkColor, w: 4, t: "line", p: [[v.x, v.y1], [v.x, v.y2]], snap: true }; }
+    else s = { c: inkColor, w: tool === "eraser" ? 28 : 5, e: tool === "eraser", p: [[px, py]] };
     const d = { kind: "ink", stroke: s, sx: e.clientX, sy: e.clientY, lx: e.clientX, ly: e.clientY, moved: false, hold: null };
     const under = tileAt(e.clientX, e.clientY);
     if (under) {
@@ -594,6 +979,16 @@ button { font: inherit; color: inherit; }
       d.el.style.left = t.x + "px";
       d.el.style.top = t.y + "px";
       tray.classList.toggle("remove-zone", overTray(e.clientY));
+    } else if (d.kind === "ink" && d.stroke.t) {
+      if (dist > 6) d.moved = true;
+      if (!d.moved) return;
+      const r = boardRect(), x = Math.round(e.clientX - r.left), y = Math.round(e.clientY - r.top), s = d.stroke;
+      if (s.t === "arc") s.p[1] = [x, y];
+      else { // a dragged divider runs from where it started to the pointer, straight up and down
+        if (s.snap) { const x0 = Math.round(d.sx - r.left), y0 = Math.round(d.sy - r.top); s.p = [[x0, y0], [x0, y]]; delete s.snap; }
+        s.p[1] = [s.p[0][0], y];
+      }
+      redrawInk(); paint(s, 0);
     } else if (d.kind === "ink") {
       if (dist > 6) d.moved = true;
       const r = boardRect();
@@ -635,7 +1030,13 @@ button { font: inherit; color: inherit; }
       updateCarryState();
       if (d.moved) commit();
     } else if (d.kind === "ink") {
-      state.strokes.push(d.stroke);
+      const s = d.stroke;
+      delete s.snap;
+      // A scoop needs some width; a tiny one was probably a stray tap.
+      if (s.t === "arc" && Math.abs(s.p[1][0] - s.p[0][0]) < 12) { redrawInk(); return; }
+      if (s.t === "line" && Math.abs(s.p[1][1] - s.p[0][1]) < 12) { redrawInk(); return; }
+      state.strokes.push(s);
+      redrawInk();
       commit();
     }
   }
@@ -665,6 +1066,19 @@ button { font: inherit; color: inherit; }
   function paint(s, from) {
     ctx.save();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (s.t) {
+      ctx.globalCompositeOperation = "source-over";
+      ctx.strokeStyle = s.c; ctx.lineWidth = s.w; ctx.lineCap = "round";
+      const [a, b] = s.p;
+      ctx.beginPath(); ctx.moveTo(a[0], a[1]);
+      if (s.t === "arc") {
+        // A scoop: a smooth curve that dips below both ends.
+        const depth = Math.max(12, Math.abs(b[0] - a[0]) * .22);
+        ctx.quadraticCurveTo((a[0] + b[0]) / 2, Math.max(a[1], b[1]) + depth * 2, b[0], b[1]);
+      } else ctx.lineTo(b[0], b[1]);
+      ctx.stroke(); ctx.restore();
+      return;
+    }
     ctx.globalCompositeOperation = s.e ? "destination-out" : "source-over";
     ctx.strokeStyle = s.c; ctx.fillStyle = s.c;
     ctx.lineWidth = s.w; ctx.lineCap = "round"; ctx.lineJoin = "round";
@@ -691,16 +1105,20 @@ button { font: inherit; color: inherit; }
     $("tMove").setAttribute("aria-pressed", String(t === "move"));
     $("tPen").setAttribute("aria-pressed", String(t === "pen"));
     $("tEraser").setAttribute("aria-pressed", String(t === "eraser"));
+    $("tScoop").setAttribute("aria-pressed", String(t === "scoop"));
+    $("tDivide").setAttribute("aria-pressed", String(t === "divide"));
     board.classList.toggle("drawing", t === "pen");
     board.classList.toggle("erasing", t === "eraser");
+    board.classList.toggle("marking", t === "scoop" || t === "divide");
     $("modebar").hidden = t === "move";
-    $("modeText").textContent = (t === "pen" ? "The pen is on." : "The eraser is on.") + " Hold a tile to move it, or";
+    const msg = { pen: "The pen is on.", eraser: "The eraser is on.", scoop: "Drag under a syllable to scoop it.", divide: "Tap between two tiles to divide." };
+    $("modeText").textContent = (msg[t] || "") + " Hold a tile to move it, or";
     if (t !== "move") select(null);
   }
   function setInk(color, id) {
     inkColor = color;
     ["inkBlack", "inkRed"].forEach((b) => $(b).setAttribute("aria-pressed", String(b === id)));
-    setTool("pen");
+    if (tool !== "scoop" && tool !== "divide") setTool("pen");
   }
   function setBg(bg) {
     prefs.bg = bg;
@@ -713,7 +1131,7 @@ button { font: inherit; color: inherit; }
     prefs.size = Math.max(0, Math.min(UNITS.length - 1, i));
     $("tSmaller").disabled = prefs.size === 0;
     $("tBigger").disabled = prefs.size === UNITS.length - 1;
-    renderTiles(); clampAll(); save();
+    renderTiles(); renderMapper(); realignBoxes(); clampAll(); lastSnap = JSON.stringify(state); save();
   }
   function syncButtons() {
     const has = selId != null && tileById(selId);
@@ -722,10 +1140,49 @@ button { font: inherit; color: inherit; }
     $("tRedo").disabled = !redoStack.length;
   }
 
+  $("scrBoard").onclick = () => setScreen("board");
+  $("scrMapper").onclick = () => setScreen("mapper");
+  $("mFewer").onclick = () => setBoxes(store.mapper.boxes - 1);
+  $("mMore").onclick = () => setBoxes(store.mapper.boxes + 1);
+  $("mNext").onclick = () => {
+    if (prefs.chain && prefs.chain.i < prefs.chain.words.length - 1) { goWord(prefs.chain.i + 1); return; }
+    if (prefs.chain) endChain();
+    finishAll();
+    state.tiles = []; state.strokes = []; selId = null; cursor = null;
+    mapperEl.querySelectorAll(".mdot.on").forEach((d) => d.classList.remove("on"));
+    renderTiles(); redrawInk(); commit();
+  };
   $("tMove").onclick = () => setTool("move");
   $("modeBack").onclick = () => setTool("move");
   $("tPen").onclick = () => setTool("pen");
   $("tEraser").onclick = () => setTool("eraser");
+  $("tScoop").onclick = () => setTool("scoop");
+  $("tDivide").onclick = () => setTool("divide");
+
+  // Hide / show the tile tray so the board can use the whole screen.
+  function setFolded(f) {
+    prefs.folded = f;
+    tray.classList.toggle("folded", f);
+    const b = $("trayFold"), label = f ? "Show tiles" : "Hide tiles";
+    b.setAttribute("aria-expanded", String(!f)); b.setAttribute("aria-label", label); b.title = label;
+    save();
+  }
+  $("trayFold").onclick = () => setFolded(!prefs.folded);
+
+  // Full screen, where the browser allows it.
+  const fsOK = !!(document.fullscreenEnabled && document.documentElement.requestFullscreen);
+  $("viewTools").hidden = !fsOK;
+  function syncFull() {
+    const on = !!document.fullscreenElement;
+    $("tFull").setAttribute("aria-pressed", String(on));
+    $("fullLabel").textContent = on ? "Exit full" : "Full screen";
+    $("fullIcon").innerHTML = on ? '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>' : '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>';
+  }
+  $("tFull").onclick = () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else document.documentElement.requestFullscreen().catch(() => { $("viewTools").hidden = true; });
+  };
+  document.addEventListener("fullscreenchange", syncFull);
   $("inkBlack").onclick = () => setInk("#1F1F1F", "inkBlack");
   $("inkRed").onclick = () => setInk("#D3302A", "inkRed");
   $("bgYellow").onclick = () => setBg("yellow");
@@ -736,12 +1193,12 @@ button { font: inherit; color: inherit; }
   $("tRedo").onclick = redo;
   $("tRotate").onclick = () => {
     const t = tileById(selId); if (!t) return;
-    t.rot = ((t.rot || 0) + 90) % 360;
+    t.rot = ((t.rot || 0) + 90) % 360; delete t.box;
     const el = elById(t.id); clampTo(t, el); placeEl(el, t); commit();
   };
   $("tCopy").onclick = () => {
     const t = tileById(selId); if (!t) return;
-    const c = Object.assign({}, t, { id: nextId++, x: -9999, y: -9999 });
+    const c = Object.assign({}, t, { id: nextId++, x: -9999, y: -9999 }); delete c.box;
     state.tiles.push(c); renderTiles();
     const ce = elById(c.id);
     const right = { x: t.x + elById(t.id).offsetWidth + 3, y: t.y };
@@ -762,12 +1219,15 @@ button { font: inherit; color: inherit; }
     clearTimeout(clearTimer);
     b.classList.remove("armed"); $("clearLabel").textContent = "Clear all";
     finishAll();
-    state = { tiles: [], strokes: [] }; selId = null; cursor = null;
+    state.tiles = []; state.strokes = []; selId = null; cursor = null;
+    mapperEl.querySelectorAll(".mdot.on").forEach((d) => d.classList.remove("on"));
     renderTiles(); redrawInk(); commit();
   };
 
   // ---------- Keyboard ----------
   document.addEventListener("keydown", (e) => {
+    if (!sheet.hidden) { if (e.key === "Escape") closeSheet(); return; }
+    if (e.target.closest && e.target.closest("input, textarea")) return;
     const mod = e.ctrlKey || e.metaKey;
     if (mod && e.key.toLowerCase() === "z") { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
     if (mod && e.key.toLowerCase() === "y") { e.preventDefault(); redo(); return; }
@@ -776,7 +1236,7 @@ button { font: inherit; color: inherit; }
     if (t && (e.key === "Delete" || e.key === "Backspace")) { e.preventDefault(); removeTile(t.id); return; }
     if (t && e.key.startsWith("Arrow")) {
       e.preventDefault();
-      const step = e.shiftKey ? 20 : 4;
+      const step = e.shiftKey ? 20 : 4; delete t.box;
       if (e.key === "ArrowLeft") t.x -= step;
       if (e.key === "ArrowRight") t.x += step;
       if (e.key === "ArrowUp") t.y -= step;
@@ -802,14 +1262,17 @@ button { font: inherit; color: inherit; }
   setBg(prefs.bg);
   setSize(prefs.size);
   sizeCanvas();
-  new ResizeObserver(() => { sizeCanvas(); clampAll(); }).observe(board);
-  if (firstVisit) {
-    // A sample word so the board shows how it works; Clear all removes it.
-    [{ text: "sh", kind: "cons" }, { text: "i", kind: "vowel" }, { text: "p", kind: "cons" }].forEach((s) => addTile(s));
-    undoStack.length = 0; lastSnap = JSON.stringify(state); select(null);
-  }
+  renderMapper();
+  setFolded(!!prefs.folded);
+  if (prefs.chain && !(Array.isArray(prefs.chain.words) && prefs.chain.words.length)) prefs.chain = null;
+  renderChainBar();
+  new ResizeObserver(() => {
+    sizeCanvas(); if (isMapper()) renderTiles(); renderMapper();
+    if (realignBoxes()) { lastSnap = JSON.stringify(state); save(); }
+    clampAll();
+  }).observe(board);
   syncButtons();
 })();
 </script>
 
-</html>
+</body></html>
